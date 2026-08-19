@@ -294,6 +294,19 @@ Item {
         readonly property real offsetX: (width - boundWidth * pxPerUnit) / 2
         readonly property real offsetY: (height - boundHeight * pxPerUnit) / 2
 
+        // Canvas-pixel geometry for a monitor object, shared by each tile's
+        // own placement and by its siblings' collision obstacle lists.
+        function rectFor(m) {
+          var w = (m.transform % 2 === 1) ? m.height / m.scale : m.width / m.scale
+          var h = (m.transform % 2 === 1) ? m.width / m.scale : m.height / m.scale
+          return {
+            x: offsetX + (m.x - boundMinX) * pxPerUnit,
+            y: offsetY + (m.y - boundMinY) * pxPerUnit,
+            width: w * pxPerUnit,
+            height: h * pxPerUnit
+          }
+        }
+
         Rectangle {
           anchors.fill: parent
           color: "transparent"
@@ -309,15 +322,23 @@ Item {
             id: tile
             required property int index
             required property var modelData
+            readonly property var rect: canvasArea.rectFor(modelData)
 
-            width: ((modelData.transform % 2 === 1) ? modelData.height / modelData.scale : modelData.width / modelData.scale) * canvasArea.pxPerUnit
-            height: ((modelData.transform % 2 === 1) ? modelData.width / modelData.scale : modelData.height / modelData.scale) * canvasArea.pxPerUnit
-            x: canvasArea.offsetX + (modelData.x - canvasArea.boundMinX) * canvasArea.pxPerUnit
-            y: canvasArea.offsetY + (modelData.y - canvasArea.boundMinY) * canvasArea.pxPerUnit
+            width: rect.width
+            height: rect.height
+            x: rect.x
+            y: rect.y
             pxPerUnit: canvasArea.pxPerUnit
             selected: index === root.selectedMonitorIndex
             label: modelData.name + "\n" + modelData.width + "x" + modelData.height + (modelData.enabled ? "" : " (off)")
             opacity: modelData.enabled ? 1.0 : 0.4
+            obstacles: {
+              var list = []
+              for (var i = 0; i < root.monitors.length; i++) {
+                if (i !== index) list.push(canvasArea.rectFor(root.monitors[i]))
+              }
+              return list
+            }
 
             onTapped: root.selectedMonitorIndex = index
             onMoved: function(dxUnits, dyUnits) {
