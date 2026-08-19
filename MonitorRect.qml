@@ -154,14 +154,20 @@ Rectangle {
       if (!dragging) return
       var candidateX = root.x + (mouse.x - pressLocalX)
       var candidateY = root.y + (mouse.y - pressLocalY)
-      var blocked = root.collidesAt(candidateX, candidateY)
-      console.log("hypr_screen: move candidate x=" + candidateX + " y=" + candidateY + " blocked=" + blocked)
-      if (!blocked) {
-        root.x = candidateX
-        root.y = candidateY
-      }
-      // A colliding candidate is simply not applied; root.x/y (and so the
-      // next event's baseline) stays put until the cursor backs out of it.
+
+      // Resolved per axis rather than as one all-or-nothing (x,y) pair: a
+      // real layout usually starts with monitors touching edge-to-edge, so
+      // almost any drag direction immediately collides on whichever axis
+      // points at a neighbor. Rejecting the whole move for that pinned the
+      // tile at its start position for the entire gesture in testing (every
+      // candidate blocked). Resolving x and y separately lets the tile
+      // still slide along the free axis instead of freezing solid.
+      var nextX = root.collidesAt(candidateX, root.y) ? root.x : candidateX
+      var nextY = root.collidesAt(nextX, candidateY) ? root.y : candidateY
+      console.log("hypr_screen: move candidate x=" + candidateX + " y=" + candidateY +
+        " -> applied x=" + nextX + " y=" + nextY)
+      root.x = nextX
+      root.y = nextY
     }
 
     onReleased: {
