@@ -175,8 +175,19 @@ Rectangle {
     onReleased: {
       if (!dragging) return
       dragging = false
-      var dxUnits = (root.x - startTileX) / Math.max(1, root.pxPerUnit)
-      var dyUnits = (root.y - startTileY) / Math.max(1, root.pxPerUnit)
+      // Guards divide-by-zero only -- NOT a floor on legitimate values.
+      // pxPerUnit is routinely well under 1 (a multi-monitor layout spans
+      // thousands of units rendered into a canvas a few hundred pixels
+      // wide), and Math.max(1, ...) was silently clamping it up to 1 in
+      // exactly that common case, corrupting every delta computed here:
+      // dxUnits came out numerically equal to the raw pixel delta instead
+      // of that divided by the real (much smaller) scale, so every drop
+      // landed a couple of units from where it started instead of near
+      // the cursor -- this is what several rounds of "still snaps back"
+      // were actually seeing.
+      var safePxPerUnit = Math.max(0.000001, root.pxPerUnit)
+      var dxUnits = (root.x - startTileX) / safePxPerUnit
+      var dyUnits = (root.y - startTileY) / safePxPerUnit
       console.log("hypr_screen: release at x=" + root.x + " y=" + root.y + " dxUnits=" + dxUnits + " dyUnits=" + dyUnits)
       if (dxUnits !== 0 || dyUnits !== 0) root.moved(dxUnits, dyUnits)
       // The parent updates the model on `moved`, which comes back around as
