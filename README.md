@@ -1,4 +1,4 @@
-# Hypr Screen
+# Monitor Profiles
 
 An [Omarchy shell plugin](https://omarchyplugins.com/develop.html) for saving
 named Hyprland monitor layouts ("profiles") and switching between them —
@@ -25,7 +25,12 @@ One panel, two modes:
 - **Edit** — a drag-and-drop canvas: monitors are drawn to scale and
   positioned proportionally to their real layout. Drag a tile to reposition
   it, click one to edit its resolution/refresh/scale/rotation/enabled state,
-  then Save as a named profile or Apply immediately.
+  then Save as a named profile or Apply immediately. One monitor is always
+  "primary" (pin badge, the (0,0) anchor everything else is stored relative
+  to); dragging it pans the canvas instead of moving it, so a layout with
+  more monitors than fit comfortably on screen can still be recentered
+  without disturbing the actual arrangement. Click another tile's pin to
+  make it primary instead.
 
 Applying a profile writes `~/.config/hypr/hypr_screen.lua` as `hl.monitor(...)`
 calls (the format Hyprland's Lua config actually understands — see
@@ -34,16 +39,16 @@ calls (the format Hyprland's Lua config actually understands — see
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/<you>/omarchy-hypr-screen.git --enable
+omarchy plugin add https://github.com/<you>/omarchy-monitor-profiles.git --enable
 ```
 
 Or for local development, symlink this checkout into place and let Omarchy
 discover it:
 
 ```sh
-ln -s "$(pwd)" ~/.config/omarchy/plugins/dev.stephenschwarz.hypr-screen
+ln -s "$(pwd)" ~/.config/omarchy/plugins/dev.stephenschwarz.monitor-profiles
 omarchy-shell shell rescanPlugins
-omarchy plugin enable dev.stephenschwarz.hypr-screen
+omarchy plugin enable dev.stephenschwarz.monitor-profiles
 ```
 
 ## Keybind
@@ -52,8 +57,8 @@ Add to `~/.config/hypr/bindings.lua`:
 
 ```lua
 hl.unbind("SUPER + SHIFT + P")
-o.bind("SUPER + SHIFT + P", "Hypr Screen switcher",
-  "omarchy-shell shell summon dev.stephenschwarz.hypr-screen '{\"mode\":\"switcher\"}'")
+o.bind("SUPER + SHIFT + P", "Monitor Profiles switcher",
+  "omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'")
 ```
 
 (Or bind a second key to `{"mode":"editor"}` — that's also the default
@@ -79,15 +84,18 @@ pcall(require, "hypr.hypr_screen")
 ```
 
 (`pcall` so a fresh install — before any profile has been applied and the
-file exists — doesn't break config parsing.)
+file exists — doesn't break config parsing. The generated file itself keeps
+the `hypr_screen.lua` name/require-path from the original app rather than
+being renamed to match the plugin — it's wired into `hyprland.lua` already
+on machines that had the old app, and renaming it buys nothing.)
 
 ## Development
 
 ```sh
 omarchy plugin validate .                                  # manifest schema
 qmllint -I "$OMARCHY_PATH/shell" *.qml                      # syntax
-omarchy-shell shell summon dev.stephenschwarz.hypr-screen '{"mode":"editor"}'
-omarchy-shell shell hide dev.stephenschwarz.hypr-screen
+omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{"mode":"editor"}'
+omarchy-shell shell hide dev.stephenschwarz.monitor-profiles
 ```
 
 Editing a file under `~/.config/omarchy/plugins/<id>/` usually hot-reloads;

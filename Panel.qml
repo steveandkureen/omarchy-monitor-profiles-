@@ -27,7 +27,7 @@ Item {
   readonly property string home: Quickshell.env("HOME")
   readonly property string profilesDir: root.home + "/.config/hypr/profiles"
   readonly property string hyprScreenLuaPath: root.home + "/.config/hypr/hypr_screen.lua"
-  readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.hypr-screen"
+  readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.monitor-profiles"
 
   property var switcherProfiles: []
 
@@ -124,7 +124,7 @@ Item {
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "hypr-screen"
+    WlrLayershell.namespace: "monitor-profiles"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
@@ -175,7 +175,7 @@ Item {
               spacing: Style.space(8)
 
               Text {
-                text: "Hypr Screen"
+                text: "Monitor Profiles"
                 color: Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title
