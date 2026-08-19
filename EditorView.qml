@@ -271,8 +271,6 @@ Item {
         id: canvasArea
         width: parent.width
         height: parent.height - inspector.height - saveBar.height
-        onWidthChanged: console.log("hypr_screen: canvasArea.width -> " + width)
-        onHeightChanged: console.log("hypr_screen: canvasArea.height -> " + height)
 
         readonly property real margin: Style.space(24)
         // Fraction of the scale-to-fit size tiles actually render at, so
@@ -311,8 +309,6 @@ Item {
           boundMinY = minY
           boundWidth = Math.max(1, maxX - minX)
           boundHeight = Math.max(1, maxY - minY)
-          console.log("hypr_screen: recomputeBounds -> boundMinX=" + boundMinX + " boundMinY=" + boundMinY +
-            " boundWidth=" + boundWidth + " boundHeight=" + boundHeight + " canvas=" + width + "x" + height)
         }
 
         readonly property real pxPerUnit: fitScale * Math.min(
@@ -320,9 +316,6 @@ Item {
           (height - 2 * margin) / boundHeight)
         readonly property real offsetX: (width - boundWidth * pxPerUnit) / 2
         readonly property real offsetY: (height - boundHeight * pxPerUnit) / 2
-        onPxPerUnitChanged: console.log("hypr_screen: pxPerUnit -> " + pxPerUnit)
-        onOffsetXChanged: console.log("hypr_screen: offsetX -> " + offsetX)
-        onOffsetYChanged: console.log("hypr_screen: offsetY -> " + offsetY)
 
         // Canvas-pixel geometry for a monitor object, shared by each tile's
         // own placement and by its siblings' collision obstacle lists.
@@ -370,14 +363,21 @@ Item {
             onTapped: root.selectedMonitorIndex = index
             onPrimaryRequested: root.setPrimary(index)
             onMoved: function(dxUnits, dyUnits) {
-              console.log("hypr_screen: onMoved index=" + index + " dxUnits=" + dxUnits + " dyUnits=" + dyUnits)
               var next = root.monitors.slice()
               var m = Object.assign({}, next[index])
               m.x = Math.round(m.x + dxUnits)
               m.y = Math.round(m.y + dyUnits)
               next[index] = m
               root.monitors = next
-              console.log("hypr_screen: onMoved applied new x=" + m.x + " y=" + m.y)
+            }
+            // Dragging the primary pans the view instead of moving it in
+            // the layout (it stays the (0,0) anchor) — shift the shared
+            // origin every tile renders relative to, not any monitor's
+            // data, so Save/Apply are unaffected by how the canvas is
+            // scrolled.
+            onPanned: function(dxUnits, dyUnits) {
+              canvasArea.boundMinX -= dxUnits
+              canvasArea.boundMinY -= dyUnits
             }
           }
         }

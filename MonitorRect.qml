@@ -5,8 +5,15 @@ import qs.Commons
 // pixels; the parent converts to and from real monitor units using
 // pxPerUnit so this component stays unit-agnostic.
 //
-// The primary tile (isPrimary) is anchored and cannot be dragged; every
-// other tile drags relative to it, tracked manually (see onPositionChanged)
+// The primary tile (isPrimary) stays at unit (0,0) — every other tile's
+// position is stored relative to it — but it still drags like any other
+// tile; dragging it pans the canvas (see panned()/onPanned in EditorView)
+// rather than moving it in the layout, so it's still reachable to
+// recenter the view when arranging monitors that don't fit the window at
+// once. A pan can't create an overlap (every tile moves together), so
+// collision checking is skipped for it.
+//
+// Dragging is tracked manually (mouse deltas accumulated into root.x/y)
 // rather than via MouseArea.drag.target — target's x/y here would
 // otherwise be a QML binding, and drag.target's job is to override exactly
 // that kind of binding by writing to it directly, which this environment's
@@ -28,11 +35,13 @@ Rectangle {
   // this tile's monitor data. Applied via syncPosition()/syncSize() below.
   property var targetRect: ({ x: 0, y: 0, width: 0, height: 0 })
   // Other tiles' current canvas-pixel rects, for drag collision checks.
-  // Provided by the parent; excludes this tile.
+  // Provided by the parent; excludes this tile. Unused while dragging the
+  // primary (a pan can't introduce an overlap).
   property var obstacles: []
 
   signal tapped()
   signal moved(real dxUnits, real dyUnits)
+  signal panned(real dxUnits, real dyUnits)
   signal primaryRequested()
 
   function syncSize() {
@@ -41,8 +50,6 @@ Rectangle {
   }
 
   function syncPosition() {
-    console.log("hypr_screen: syncPosition " + label.split("\n")[0] + " dragging=" + dragArea.dragging +
-      " current=(" + x + "," + y + ") target=(" + targetRect.x + "," + targetRect.y + ") pxPerUnit=" + pxPerUnit)
     if (dragArea.dragging) return
     x = targetRect.x
     y = targetRect.y
@@ -83,8 +90,8 @@ Rectangle {
     elide: Text.ElideRight
   }
 
-  // Pin badge: filled/accented when this tile is primary (anchored, can't
-  // be dragged); click any other tile's badge to make that one primary
+  // Pin badge: filled/accented when this tile is primary (the (0,0)
+  // anchor); click any other tile's badge to make that one primary
   // instead (rebasing every monitor's coordinates around it).
   Rectangle {
     id: pin
@@ -121,7 +128,7 @@ Rectangle {
   MouseArea {
     id: dragArea
     anchors.fill: parent
-    cursorShape: root.isPrimary ? Qt.ArrowCursor : Qt.SizeAllCursor
+    cursorShape: root.isPrimary ? Qt.OpenHandCursor : Qt.SizeAllCursor
     preventStealing: true
 
     property bool dragging: false
@@ -142,9 +149,7 @@ Rectangle {
     property real startTileY: 0
 
     onPressed: function(mouse) {
-      console.log("hypr_screen: press " + root.label.split("\n")[0] + " isPrimary=" + root.isPrimary + " at x=" + root.x + " y=" + root.y)
       root.tapped()
-      if (root.isPrimary) return
       pressLocalX = mouse.x
       pressLocalY = mouse.y
       startTileX = root.x
@@ -157,6 +162,13 @@ Rectangle {
       var candidateX = root.x + (mouse.x - pressLocalX)
       var candidateY = root.y + (mouse.y - pressLocalY)
 
+      if (root.isPrimary) {
+        // Panning: every tile moves together, so there's nothing to block.
+        root.x = candidateX
+        root.y = candidateY
+        return
+      }
+
       // Resolved per axis rather than as one all-or-nothing (x,y) pair: a
       // real layout usually starts with monitors touching edge-to-edge, so
       // almost any drag direction immediately collides on whichever axis
@@ -166,8 +178,6 @@ Rectangle {
       // still slide along the free axis instead of freezing solid.
       var nextX = root.collidesAt(candidateX, root.y) ? root.x : candidateX
       var nextY = root.collidesAt(nextX, candidateY) ? root.y : candidateY
-      console.log("hypr_screen: move candidate x=" + candidateX + " y=" + candidateY +
-        " -> applied x=" + nextX + " y=" + nextY)
       root.x = nextX
       root.y = nextY
     }
@@ -178,23 +188,19 @@ Rectangle {
       // Guards divide-by-zero only -- NOT a floor on legitimate values.
       // pxPerUnit is routinely well under 1 (a multi-monitor layout spans
       // thousands of units rendered into a canvas a few hundred pixels
-      // wide), and Math.max(1, ...) was silently clamping it up to 1 in
-      // exactly that common case, corrupting every delta computed here:
-      // dxUnits came out numerically equal to the raw pixel delta instead
-      // of that divided by the real (much smaller) scale, so every drop
-      // landed a couple of units from where it started instead of near
-      // the cursor -- this is what several rounds of "still snaps back"
-      // were actually seeing.
+      // wide); Math.max(1, ...) here previously clamped it up to 1 in
+      // exactly that common case, corrupting every delta computed below.
       var safePxPerUnit = Math.max(0.000001, root.pxPerUnit)
       var dxUnits = (root.x - startTileX) / safePxPerUnit
       var dyUnits = (root.y - startTileY) / safePxPerUnit
-      console.log("hypr_screen: release at x=" + root.x + " y=" + root.y + " dxUnits=" + dxUnits + " dyUnits=" + dyUnits)
-      if (dxUnits !== 0 || dyUnits !== 0) root.moved(dxUnits, dyUnits)
-      // The parent updates the model on `moved`, which comes back around as
-      // a new targetRect; syncPosition() then applies it (dragging is false
-      // by then) — normally a no-op since it should already match, but it's
-      // what settles a drop that landed a fraction of a unit off due to
-      // rounding onto the exact grid position.
+      if (dxUnits === 0 && dyUnits === 0) return
+      if (root.isPrimary) root.panned(dxUnits, dyUnits)
+      else root.moved(dxUnits, dyUnits)
+      // The parent updates the model (or, for a pan, the canvas origin) on
+      // this signal, which comes back around as a new targetRect;
+      // syncPosition() then applies it (dragging is false by then) —
+      // normally a no-op since it should already match, but it's what
+      // settles a drop onto its exact rounded-unit grid position.
     }
   }
 }
