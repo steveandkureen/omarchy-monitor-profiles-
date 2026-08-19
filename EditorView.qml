@@ -322,12 +322,8 @@ Item {
             id: tile
             required property int index
             required property var modelData
-            readonly property var rect: canvasArea.rectFor(modelData)
 
-            width: rect.width
-            height: rect.height
-            x: rect.x
-            y: rect.y
+            targetRect: canvasArea.rectFor(modelData)
             pxPerUnit: canvasArea.pxPerUnit
             selected: index === root.selectedMonitorIndex
             label: modelData.name + "\n" + modelData.width + "x" + modelData.height + (modelData.enabled ? "" : " (off)")

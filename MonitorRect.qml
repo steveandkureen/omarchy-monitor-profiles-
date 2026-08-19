@@ -6,23 +6,48 @@ import qs.Commons
 // pxPerUnit so this component stays unit-agnostic.
 //
 // Dragging is tracked manually (mouse deltas accumulated into root.x/y)
-// rather than via MouseArea.drag.target: target's x/y here are QML bindings
-// owned by the parent's Repeater delegate, and drag.target's job is to
-// override exactly that kind of binding by writing to it directly — which
-// this environment's Quickshell/Qt build was not reliably doing (tiles
-// wouldn't move at all). Manual tracking sidesteps whatever that was.
+// rather than via MouseArea.drag.target: target's x/y here would otherwise
+// be a QML binding, and drag.target's job is to override exactly that kind
+// of binding by writing to it directly — which this environment's
+// Quickshell/Qt build was not reliably doing (tiles wouldn't move at all).
+//
+// targetRect (below) is deliberately NOT bound straight to x/y either, for
+// the same reason: mixing a live declarative binding with the drag code's
+// imperative writes to the same property is exactly the kind of thing that
+// behaved inconsistently here (whether the binding "wins" back depends on
+// whether the delegate instance is reused or recreated on the next model
+// update, which isn't something to rely on). Position is synced from
+// targetRect explicitly instead, and only when not mid-drag.
 Rectangle {
   id: root
 
   property bool selected: false
   property string label: ""
   property real pxPerUnit: 1
-  // Other tiles' current canvas-pixel rects ({x,y,width,height}), for drag
-  // collision checks. Provided by the parent; excludes this tile.
+  // {x, y, width, height} in canvas pixels, as computed by the parent from
+  // this tile's monitor data. Applied via syncPosition()/syncSize() below —
+  // see the note above for why that's a function call, not a binding.
+  property var targetRect: ({ x: 0, y: 0, width: 0, height: 0 })
+  // Other tiles' current canvas-pixel rects, for drag collision checks.
+  // Provided by the parent; excludes this tile.
   property var obstacles: []
 
   signal tapped()
   signal moved(real dxUnits, real dyUnits)
+
+  function syncSize() {
+    width = targetRect.width
+    height = targetRect.height
+  }
+
+  function syncPosition() {
+    if (dragArea.dragging) return
+    x = targetRect.x
+    y = targetRect.y
+  }
+
+  onTargetRectChanged: { syncSize(); syncPosition() }
+  Component.onCompleted: { syncSize(); syncPosition() }
 
   radius: Style.cornerRadius
   color: selected
@@ -105,6 +130,11 @@ Rectangle {
       var dxUnits = (root.x - startTileX) / Math.max(1, root.pxPerUnit)
       var dyUnits = (root.y - startTileY) / Math.max(1, root.pxPerUnit)
       if (dxUnits !== 0 || dyUnits !== 0) root.moved(dxUnits, dyUnits)
+      // The parent updates the model on `moved`, which comes back around as
+      // a new targetRect; syncPosition() then applies it (dragging is false
+      // by then) — normally a no-op since it should already match, but it's
+      // what settles a drop that landed a fraction of a unit off due to
+      // rounding onto the exact grid position.
     }
   }
 }
