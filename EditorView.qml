@@ -43,6 +43,9 @@ Item {
   function replaceMonitors(next) {
     root.monitors = next
     if (root.selectedMonitorIndex >= next.length) root.selectedMonitorIndex = next.length > 0 ? 0 : -1
+    // Bounds/scale are frozen to this new layout, not recomputed on every
+    // drag or field edit — see canvasArea.recomputeBounds() for why.
+    canvasArea.recomputeBounds()
   }
 
   function updateSelected(fields) {
@@ -247,19 +250,45 @@ Item {
         height: parent.height - inspector.height - saveBar.height
 
         readonly property real margin: Style.space(24)
-        readonly property real boundMinX: root.monitors.length ? Math.min.apply(null, root.monitors.map(function(m) { return m.x })) : 0
-        readonly property real boundMinY: root.monitors.length ? Math.min.apply(null, root.monitors.map(function(m) { return m.y })) : 0
-        readonly property real boundMaxX: root.monitors.length ? Math.max.apply(null, root.monitors.map(function(m) {
-          var w = (m.transform % 2 === 1) ? m.height / m.scale : m.width / m.scale
-          return m.x + w
-        })) : 1
-        readonly property real boundMaxY: root.monitors.length ? Math.max.apply(null, root.monitors.map(function(m) {
-          var h = (m.transform % 2 === 1) ? m.width / m.scale : m.height / m.scale
-          return m.y + h
-        })) : 1
-        readonly property real boundWidth: Math.max(1, boundMaxX - boundMinX)
-        readonly property real boundHeight: Math.max(1, boundMaxY - boundMinY)
-        readonly property real pxPerUnit: Math.min(
+        // Fraction of the scale-to-fit size tiles actually render at, so
+        // they don't butt up against the canvas edge and there's slack to
+        // drag them around in.
+        readonly property real fitScale: 0.7
+
+        // Frozen at load time (see recomputeBounds()) rather than derived
+        // live from root.monitors: if these tracked every drag/field edit,
+        // moving one tile would shift every tile's frame of reference
+        // (scale + origin) out from under it as soon as you dropped it —
+        // the "snaps back" symptom. A stable frame is what makes a drop
+        // land, and stay, where you dropped it.
+        property real boundMinX: 0
+        property real boundMinY: 0
+        property real boundWidth: 1
+        property real boundHeight: 1
+
+        function recomputeBounds() {
+          var monitors = root.monitors
+          if (!monitors.length) {
+            boundMinX = 0; boundMinY = 0; boundWidth = 1; boundHeight = 1
+            return
+          }
+          var minX = Math.min.apply(null, monitors.map(function(m) { return m.x }))
+          var minY = Math.min.apply(null, monitors.map(function(m) { return m.y }))
+          var maxX = Math.max.apply(null, monitors.map(function(m) {
+            var w = (m.transform % 2 === 1) ? m.height / m.scale : m.width / m.scale
+            return m.x + w
+          }))
+          var maxY = Math.max.apply(null, monitors.map(function(m) {
+            var h = (m.transform % 2 === 1) ? m.width / m.scale : m.height / m.scale
+            return m.y + h
+          }))
+          boundMinX = minX
+          boundMinY = minY
+          boundWidth = Math.max(1, maxX - minX)
+          boundHeight = Math.max(1, maxY - minY)
+        }
+
+        readonly property real pxPerUnit: fitScale * Math.min(
           (width - 2 * margin) / boundWidth,
           (height - 2 * margin) / boundHeight)
         readonly property real offsetX: (width - boundWidth * pxPerUnit) / 2
