@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "dev.stephenschwarz.hypr-screen",
+  "name": "Hypr Screen",
+  "version": "1.0.0",
+  "author": "Stephen Schwarz",
+  "license": "MIT",
+  "description": "Save named monitor layouts and switch between them: a drag-and-drop editor plus a keyboard-driven quick switcher, both as one native Omarchy panel.",
+  "kinds": ["panel"],
+  "entryPoints": {
+    "panel": "Panel.qml"
+  }
+}
