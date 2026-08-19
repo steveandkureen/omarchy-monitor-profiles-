@@ -20,6 +20,24 @@ Item {
   readonly property var selectedMonitor: selectedMonitorIndex >= 0 && selectedMonitorIndex < monitors.length
     ? monitors[selectedMonitorIndex] : null
 
+  // The primary monitor's tile is not draggable and stays put; every other
+  // tile drags relative to it. Defaults to whichever monitor is already at
+  // (0,0) (the usual case for a real layout), else the first one.
+  property int primaryIndex: 0
+
+  function setPrimary(newIndex) {
+    if (newIndex < 0 || newIndex >= root.monitors.length || newIndex === root.primaryIndex) return
+    var offsetXUnits = root.monitors[newIndex].x
+    var offsetYUnits = root.monitors[newIndex].y
+    if (offsetXUnits !== 0 || offsetYUnits !== 0) {
+      root.monitors = root.monitors.map(function(m) {
+        return Object.assign({}, m, { x: m.x - offsetXUnits, y: m.y - offsetYUnits })
+      })
+    }
+    root.primaryIndex = newIndex
+    canvasArea.recomputeBounds()
+  }
+
   property string statusText: ""
 
   signal applied()
@@ -43,6 +61,11 @@ Item {
   function replaceMonitors(next) {
     root.monitors = next
     if (root.selectedMonitorIndex >= next.length) root.selectedMonitorIndex = next.length > 0 ? 0 : -1
+    var zeroIndex = -1
+    for (var i = 0; i < next.length; i++) {
+      if (next[i].x === 0 && next[i].y === 0) { zeroIndex = i; break }
+    }
+    root.primaryIndex = zeroIndex >= 0 ? zeroIndex : 0
     // Bounds/scale are frozen to this new layout, not recomputed on every
     // drag or field edit — see canvasArea.recomputeBounds() for why.
     canvasArea.recomputeBounds()
@@ -326,6 +349,7 @@ Item {
             targetRect: canvasArea.rectFor(modelData)
             pxPerUnit: canvasArea.pxPerUnit
             selected: index === root.selectedMonitorIndex
+            isPrimary: index === root.primaryIndex
             label: modelData.name + "\n" + modelData.width + "x" + modelData.height + (modelData.enabled ? "" : " (off)")
             opacity: modelData.enabled ? 1.0 : 0.4
             obstacles: {
@@ -337,13 +361,16 @@ Item {
             }
 
             onTapped: root.selectedMonitorIndex = index
+            onPrimaryRequested: root.setPrimary(index)
             onMoved: function(dxUnits, dyUnits) {
+              console.log("hypr_screen: onMoved index=" + index + " dxUnits=" + dxUnits + " dyUnits=" + dyUnits)
               var next = root.monitors.slice()
               var m = Object.assign({}, next[index])
               m.x = Math.round(m.x + dxUnits)
               m.y = Math.round(m.y + dyUnits)
               next[index] = m
               root.monitors = next
+              console.log("hypr_screen: onMoved applied new x=" + m.x + " y=" + m.y)
             }
           }
         }

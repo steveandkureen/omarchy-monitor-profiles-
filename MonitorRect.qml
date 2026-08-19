@@ -1,32 +1,31 @@
 import QtQuick
 import qs.Commons
 
-// One draggable monitor tile on the editor canvas. Position/size are in
-// canvas pixels; the parent converts to and from real monitor units using
+// One monitor tile on the editor canvas. Position/size are in canvas
+// pixels; the parent converts to and from real monitor units using
 // pxPerUnit so this component stays unit-agnostic.
 //
-// Dragging is tracked manually (mouse deltas accumulated into root.x/y)
-// rather than via MouseArea.drag.target: target's x/y here would otherwise
-// be a QML binding, and drag.target's job is to override exactly that kind
-// of binding by writing to it directly — which this environment's
+// The primary tile (isPrimary) is anchored and cannot be dragged; every
+// other tile drags relative to it, tracked manually (see onPositionChanged)
+// rather than via MouseArea.drag.target — target's x/y here would
+// otherwise be a QML binding, and drag.target's job is to override exactly
+// that kind of binding by writing to it directly, which this environment's
 // Quickshell/Qt build was not reliably doing (tiles wouldn't move at all).
 //
 // targetRect (below) is deliberately NOT bound straight to x/y either, for
 // the same reason: mixing a live declarative binding with the drag code's
 // imperative writes to the same property is exactly the kind of thing that
-// behaved inconsistently here (whether the binding "wins" back depends on
-// whether the delegate instance is reused or recreated on the next model
-// update, which isn't something to rely on). Position is synced from
-// targetRect explicitly instead, and only when not mid-drag.
+// behaved inconsistently here. Position is synced from targetRect
+// explicitly instead (syncPosition()), and only when not mid-drag.
 Rectangle {
   id: root
 
   property bool selected: false
+  property bool isPrimary: false
   property string label: ""
   property real pxPerUnit: 1
   // {x, y, width, height} in canvas pixels, as computed by the parent from
-  // this tile's monitor data. Applied via syncPosition()/syncSize() below —
-  // see the note above for why that's a function call, not a binding.
+  // this tile's monitor data. Applied via syncPosition()/syncSize() below.
   property var targetRect: ({ x: 0, y: 0, width: 0, height: 0 })
   // Other tiles' current canvas-pixel rects, for drag collision checks.
   // Provided by the parent; excludes this tile.
@@ -34,6 +33,7 @@ Rectangle {
 
   signal tapped()
   signal moved(real dxUnits, real dyUnits)
+  signal primaryRequested()
 
   function syncSize() {
     width = targetRect.width
@@ -81,10 +81,45 @@ Rectangle {
     elide: Text.ElideRight
   }
 
+  // Pin badge: filled/accented when this tile is primary (anchored, can't
+  // be dragged); click any other tile's badge to make that one primary
+  // instead (rebasing every monitor's coordinates around it).
+  Rectangle {
+    id: pin
+    // Above dragArea (declared after it, and geometrically overlapping the
+    // corner) so its MouseArea gets first crack at clicks there.
+    z: 10
+    width: Style.space(18)
+    height: Style.space(18)
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.margins: Style.space(4)
+    radius: width / 2
+    color: root.isPrimary
+      ? Color.accent
+      : Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.55)
+    border.color: Color.accent
+    border.width: 1
+
+    Text {
+      anchors.centerIn: parent
+      text: "★"
+      font.pixelSize: Style.font.caption
+      color: root.isPrimary ? Color.background : Color.accent
+    }
+
+    MouseArea {
+      anchors.fill: parent
+      anchors.margins: -4
+      cursorShape: Qt.PointingHandCursor
+      onClicked: { root.tapped(); root.primaryRequested() }
+    }
+  }
+
   MouseArea {
     id: dragArea
     anchors.fill: parent
-    cursorShape: Qt.SizeAllCursor
+    cursorShape: root.isPrimary ? Qt.ArrowCursor : Qt.SizeAllCursor
     preventStealing: true
 
     property bool dragging: false
@@ -105,19 +140,23 @@ Rectangle {
     property real startTileY: 0
 
     onPressed: function(mouse) {
+      console.log("hypr_screen: press " + root.label.split("\n")[0] + " isPrimary=" + root.isPrimary + " at x=" + root.x + " y=" + root.y)
+      root.tapped()
+      if (root.isPrimary) return
       pressLocalX = mouse.x
       pressLocalY = mouse.y
       startTileX = root.x
       startTileY = root.y
       dragging = true
-      root.tapped()
     }
 
     onPositionChanged: function(mouse) {
       if (!dragging) return
       var candidateX = root.x + (mouse.x - pressLocalX)
       var candidateY = root.y + (mouse.y - pressLocalY)
-      if (!root.collidesAt(candidateX, candidateY)) {
+      var blocked = root.collidesAt(candidateX, candidateY)
+      console.log("hypr_screen: move candidate x=" + candidateX + " y=" + candidateY + " blocked=" + blocked)
+      if (!blocked) {
         root.x = candidateX
         root.y = candidateY
       }
@@ -126,9 +165,11 @@ Rectangle {
     }
 
     onReleased: {
+      if (!dragging) return
       dragging = false
       var dxUnits = (root.x - startTileX) / Math.max(1, root.pxPerUnit)
       var dyUnits = (root.y - startTileY) / Math.max(1, root.pxPerUnit)
+      console.log("hypr_screen: release at x=" + root.x + " y=" + root.y + " dxUnits=" + dxUnits + " dyUnits=" + dyUnits)
       if (dxUnits !== 0 || dyUnits !== 0) root.moved(dxUnits, dyUnits)
       // The parent updates the model on `moved`, which comes back around as
       // a new targetRect; syncPosition() then applies it (dragging is false
