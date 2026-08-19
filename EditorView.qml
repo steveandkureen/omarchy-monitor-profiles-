@@ -271,6 +271,8 @@ Item {
         id: canvasArea
         width: parent.width
         height: parent.height - inspector.height - saveBar.height
+        onWidthChanged: console.log("hypr_screen: canvasArea.width -> " + width)
+        onHeightChanged: console.log("hypr_screen: canvasArea.height -> " + height)
 
         readonly property real margin: Style.space(24)
         // Fraction of the scale-to-fit size tiles actually render at, so
@@ -309,6 +311,8 @@ Item {
           boundMinY = minY
           boundWidth = Math.max(1, maxX - minX)
           boundHeight = Math.max(1, maxY - minY)
+          console.log("hypr_screen: recomputeBounds -> boundMinX=" + boundMinX + " boundMinY=" + boundMinY +
+            " boundWidth=" + boundWidth + " boundHeight=" + boundHeight + " canvas=" + width + "x" + height)
         }
 
         readonly property real pxPerUnit: fitScale * Math.min(
@@ -316,6 +320,9 @@ Item {
           (height - 2 * margin) / boundHeight)
         readonly property real offsetX: (width - boundWidth * pxPerUnit) / 2
         readonly property real offsetY: (height - boundHeight * pxPerUnit) / 2
+        onPxPerUnitChanged: console.log("hypr_screen: pxPerUnit -> " + pxPerUnit)
+        onOffsetXChanged: console.log("hypr_screen: offsetX -> " + offsetX)
+        onOffsetYChanged: console.log("hypr_screen: offsetY -> " + offsetY)
 
         // Canvas-pixel geometry for a monitor object, shared by each tile's
         // own placement and by its siblings' collision obstacle lists.
@@ -376,12 +383,19 @@ Item {
         }
       }
 
-      // Inspector for the selected monitor.
+      // Inspector for the selected monitor. Height is constant (not tied to
+      // whether something is selected) so canvasArea's size — and so the
+      // whole canvas-pixel coordinate frame every tile positions itself in
+      // — never shifts as a side effect of selecting/deselecting a tile.
+      // It used to, and since every press selects a tile before a drag
+      // starts, that shift was corrupting the dragged tile's own position
+      // baseline before the drag even began.
       Row {
         id: inspector
         width: parent.width
-        height: root.selectedMonitor ? Style.space(56) : 0
-        visible: root.selectedMonitor !== null
+        height: Style.space(56)
+        opacity: root.selectedMonitor !== null ? 1 : 0
+        enabled: root.selectedMonitor !== null
         spacing: Style.space(10)
         leftPadding: Style.space(10)
         topPadding: Style.space(8)

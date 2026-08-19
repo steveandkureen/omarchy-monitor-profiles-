@@ -41,6 +41,8 @@ Rectangle {
   }
 
   function syncPosition() {
+    console.log("hypr_screen: syncPosition " + label.split("\n")[0] + " dragging=" + dragArea.dragging +
+      " current=(" + x + "," + y + ") target=(" + targetRect.x + "," + targetRect.y + ") pxPerUnit=" + pxPerUnit)
     if (dragArea.dragging) return
     x = targetRect.x
     y = targetRect.y
