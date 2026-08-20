@@ -1,7 +1,7 @@
 import QtQuick
 import qs.Commons
 
-// Three independent first-run checklist items:
+// Two independent first-run checklist items:
 //  - hyprland.lua loading what this plugin writes on Apply/Save. Without
 //    this, Apply/Save still work fine (they're just file writes), but
 //    nothing ever reaches the screen, which reads as the plugin doing
@@ -10,23 +10,20 @@ import qs.Commons
 //  - an Omarchy menu entry. This is the idiomatic way a panel-kind plugin
 //    with no bar icon becomes keyboard-reachable — first-party equivalents
 //    (wifiqr, speedtest, disk-speedtest) all work this way, not via a
-//    dedicated Hyprland keybind.
-//  - a direct keybind, offered alongside the menu entry rather than
-//    instead of it: faster once you've picked a key, but picking one risks
-//    colliding with an existing default (this plugin's own suggestion,
-//    SUPER+SHIFT+P, took that combo away from a default Omarchy binding).
-// None of the three block each other; each is only "done" or not on its
-// own, and only the first one gates functionality.
+//    dedicated Hyprland keybind. Deliberately not suggesting one of those
+//    either (an earlier version of this did): picking a key risks
+//    colliding with an existing default the way this plugin's own
+//    suggestion, SUPER+SHIFT+P, collided with one of Omarchy's own —
+//    better left for anyone who wants one to bind by hand.
+// The two don't block each other; only the first gates functionality.
 Item {
   id: root
 
   property bool configReady: false
   property bool menuEntryReady: false
-  property bool keybindReady: false
 
   signal wireUpConfigRequested()
   signal wireUpMenuEntryRequested()
-  signal wireUpKeybindRequested()
   signal dismissed()
 
   Column {
@@ -61,16 +58,6 @@ Item {
       snippet: '"trigger.monitor-profiles": { "action": "omarchy-shell shell summon …" }'
       doneText: "already registered — search “monitors”"
       onAddRequested: root.wireUpMenuEntryRequested()
-    }
-
-    SetupItem {
-      width: parent.width
-      done: root.keybindReady
-      title: "Open it with a keybind"
-      body: "No keybind summons this plugin yet. Add SUPER+SHIFT+P to ~/.config/hypr/bindings.lua (freely changeable afterward):"
-      snippet: "SUPER + SHIFT + P"
-      doneText: "a keybind is already set"
-      onAddRequested: root.wireUpKeybindRequested()
     }
 
     Text {

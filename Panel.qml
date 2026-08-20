@@ -28,7 +28,6 @@ Item {
   readonly property string profilesDir: root.home + "/.config/hypr/profiles"
   readonly property string hyprScreenLuaPath: root.home + "/.config/hypr/hypr_screen.lua"
   readonly property string hyprlandLuaPath: root.home + "/.config/hypr/hyprland.lua"
-  readonly property string bindingsLuaPath: root.home + "/.config/hypr/bindings.lua"
   readonly property string omarchyMenuExtensionsPath: root.home + "/.config/omarchy/extensions/omarchy-menu.jsonc"
   readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.monitor-profiles"
 
@@ -52,26 +51,19 @@ Item {
   // dedicated Hyprland key at all; they're rows in
   // ~/.config/omarchy/extensions/omarchy-menu.jsonc, opened via
   // `omarchy-shell shell summon <id> ...`, and reached through the Omarchy
-  // menu's own search. That sidesteps key-conflict risk entirely (see the
-  // keybind item below, which grabbed SUPER+SHIFT+P away from a default
-  // Omarchy binding) and is where a first-time user would actually look.
+  // menu's own search. Deliberately not offering a bindings.lua keybind
+  // here too (an earlier version of this did): picking one risks colliding
+  // with an existing default the way this plugin's own suggestion,
+  // SUPER+SHIFT+P, collided with one of Omarchy's — better left for anyone
+  // who wants one to bind by hand, per the README.
   property bool menuEntryChecked: false
   property bool menuEntryReady: false
-  // Whether *any* keybind summons this plugin (detected by our own id
-  // showing up anywhere in bindings.lua — not which key, since that's a
-  // matter of taste). There's no Omarchy-level mechanism for a plugin to
-  // declare or register a keybind (checked the manifest schema — no such
-  // field exists). Offered alongside the menu entry above, not instead of
-  // it, since a direct hotkey is still faster once you've settled on one —
-  // just not the first thing to suggest.
-  property bool keybindChecked: false
-  property bool keybindReady: false
   // Sticky for the life of this shell process once set, not just this
   // open/close cycle — otherwise the switcher keybind would re-nag on
   // every single press until the user gets around to fixing it.
   property bool setupDismissed: false
-  readonly property bool showSetupBanner: configChecked && keybindChecked && menuEntryChecked &&
-    (!configReady || !keybindReady || !menuEntryReady) && !setupDismissed
+  readonly property bool showSetupBanner: configChecked && menuEntryChecked &&
+    (!configReady || !menuEntryReady) && !setupDismissed
 
   function open(payloadJson) {
     var payload = {}
@@ -80,7 +72,6 @@ Item {
     root.switcherTimeout = payload.timeout !== undefined ? Number(payload.timeout) : 10
     if (root.mode === "switcher") refreshSwitcherProfiles()
     checkConfig()
-    checkKeybind()
     checkMenuEntry()
     ensureProfilesSeeded()
     root.opened = true
@@ -153,16 +144,6 @@ Item {
   function wireUpConfig() {
     configWireUpProc.running = false
     configWireUpProc.running = true
-  }
-
-  function checkKeybind() {
-    keybindCheckProc.running = false
-    keybindCheckProc.running = true
-  }
-
-  function wireUpKeybind() {
-    keybindFile.path = root.bindingsLuaPath
-    keybindFile.reload()
   }
 
   function checkMenuEntry() {
@@ -298,62 +279,6 @@ Item {
   }
 
   Process {
-    id: keybindCheckProc
-    command: ["bash", "-lc", "grep -q " + root.pluginId + " \"" + root.bindingsLuaPath + "\" 2>/dev/null && echo yes || echo no"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.keybindReady = String(text || "").trim() === "yes"
-        root.keybindChecked = true
-      }
-    }
-  }
-
-  // SUPER+SHIFT+P, matching the README — appended to the end of
-  // bindings.lua (that file is just a flat list of hl.unbind/o.bind calls,
-  // no anchor to insert relative to the way hyprland.lua has one). Omarchy
-  // quattro's own default bindings claim SUPER+SHIFT+P for a webapp
-  // (Google Photos), so the unbind isn't defensive — every fresh install
-  // needs it.
-  //
-  // Read-modify-write via FileView rather than a bash one-liner: the line
-  // this needs to produce nests a JSON payload inside a shell single-quoted
-  // string inside a Lua double-quoted string, and hand-escaping that
-  // through an *additional* bash -lc layer on top is exactly the kind of
-  // thing that's gone wrong by hand elsewhere in this file's history.
-  // JSON.stringify() on the plain-text command line does the Lua-string
-  // escaping correctly in one step (Lua and JSON agree on how to escape "
-  // and \\) with nothing to get wrong by hand.
-  function keybindSnippet() {
-    var summonCmd = "omarchy-shell shell summon " + root.pluginId + " '{\"mode\":\"switcher\"}'"
-    return "\n-- Monitor Profiles switcher (added by the plugin itself; change the key freely)\n" +
-      "hl.unbind(\"SUPER + SHIFT + P\")\n" +
-      "o.bind(\"SUPER + SHIFT + P\", \"Monitor Profiles switcher\",\n" +
-      "  " + JSON.stringify(summonCmd) + ")\n"
-  }
-
-  FileView {
-    id: keybindFile
-    watchChanges: false
-    printErrors: false
-    onLoaded: {
-      var current = text()
-      if (current.indexOf(root.pluginId) < 0) {
-        keybindFile.setText(current + root.keybindSnippet())
-        keybindReloadProc.running = true
-      } else {
-        root.checkKeybind()
-      }
-    }
-  }
-
-  Process {
-    id: keybindReloadProc
-    command: ["hyprctl", "reload"]
-    onExited: root.checkKeybind()
-  }
-
-  Process {
     id: menuEntryCheckProc
     command: ["bash", "-lc", "grep -q " + root.pluginId + " \"" + root.omarchyMenuExtensionsPath + "\" 2>/dev/null && echo yes || echo no"]
     stdout: StdioCollector {
@@ -366,12 +291,12 @@ Item {
   }
 
   // The whole file is one JSON(C) object; the simplest safe edit is
-  // splicing a new entry in just before its closing brace, same idea as
-  // the config/keybind read-modify-writes above but text-spliced instead
-  // of appended, since this format doesn't end in a way new lines can just
-  // follow. JSON.stringify() on the entry object (not hand-built field by
-  // field) handles the icon glyph, label, and embedded-quote payload
-  // correctly in one step — JSONC tolerates the trailing comma this always
+  // splicing a new entry in just before its closing brace, same
+  // read-modify-write idea as the config wire-up above but text-spliced
+  // instead of appended, since this format doesn't end in a way new lines
+  // can just follow. JSON.stringify() on the entry object (not hand-built
+  // field by field) handles the icon glyph, label, and embedded-quote
+  // payload correctly in one step — JSONC tolerates the trailing comma this always
   // leaves before "}" (its own header comment says so: "comments, and
   // trailing commas").
   function menuEntrySnippet() {
@@ -456,9 +381,9 @@ Item {
 
       Item {
         anchors.centerIn: parent
-        // The setup banner's three-item checklist needs more room than the
-        // switcher's deliberately compact card provides — use the editor's
-        // larger size whenever it's showing, regardless of which mode was
+        // The setup banner's checklist needs more room than the switcher's
+        // deliberately compact card provides — use the editor's larger
+        // size whenever it's showing, regardless of which mode was
         // actually requested.
         readonly property bool useWideCard: root.showSetupBanner || root.mode === "editor"
         readonly property real cardWidth: useWideCard ? Style.space(980) : Style.space(420)
@@ -513,10 +438,8 @@ Item {
                 visible: root.showSetupBanner
                 configReady: root.configReady
                 menuEntryReady: root.menuEntryReady
-                keybindReady: root.keybindReady
                 onWireUpConfigRequested: root.wireUpConfig()
                 onWireUpMenuEntryRequested: root.wireUpMenuEntry()
-                onWireUpKeybindRequested: root.wireUpKeybind()
                 onDismissed: root.setupDismissed = true
               }
 
