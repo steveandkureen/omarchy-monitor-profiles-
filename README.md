@@ -67,6 +67,7 @@ Everything in the editor works without a mouse, in three vim-style modes
 | `a` | apply now |
 | `dd` | delete the current profile |
 | `Tab` | switch between Switch/Edit panel modes |
+| `q` / `Esc` | close the panel (works from either mode) |
 
 **Move** (`i` from Normal) — `h`/`j`/`k`/`l`/arrows nudge the selected tile
 (or pan the canvas, if it's the primary — same distinction as dragging it

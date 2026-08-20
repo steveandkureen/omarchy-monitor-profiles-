@@ -585,7 +585,7 @@ Item {
               return "MOVE  hjkl/⇧hjkl nudge · esc done"
             if (root.editorMode === "naming")
               return "NAME  enter save · esc cancel"
-            return "hjkl select · i move · r rotate · e enable · p primary · [ ] profile · s save · a apply · dd delete"
+            return "hjkl select · i move · r rotate · e enable · p primary · [ ] profile · s save · a apply · dd delete · q quit"
           }
         }
       }

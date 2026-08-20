@@ -276,12 +276,20 @@ Item {
       focus: true
       Keys.onEscapePressed: root.dismiss()
       // Reached by bubbling: neither SwitcherView nor EditorView's own
-      // Keys.onPressed claims Tab, so an unhandled press lands here
-      // regardless of which one currently has focus — switching modes
-      // without a mouse, same as clicking the Switch/Edit tabs.
+      // Keys.onPressed claims Tab or Q, so an unhandled press lands here
+      // regardless of which one currently has focus — switching modes, or
+      // quitting, without a mouse, same as the Switch/Edit tabs or the
+      // scrim click. (q not just Escape: the near-universal "close this"
+      // key in vim-adjacent TUIs — less, man, lazygit, htop — even though
+      // vim itself doesn't bind it that way. Doesn't fire while the
+      // profile-name field has focus in Naming mode; that's a real text
+      // field and "q" there is just the letter q.)
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Tab) {
           root.setMode(root.mode === "switcher" ? "editor" : "switcher")
+          event.accepted = true
+        } else if (event.key === Qt.Key_Q) {
+          root.dismiss()
           event.accepted = true
         }
       }
