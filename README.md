@@ -4,14 +4,24 @@ An [Omarchy shell plugin](https://omarchyplugins.com/develop.html) for saving
 named Hyprland monitor layouts ("profiles") and switching between them —
 e.g. going from three monitors down to just the laptop panel and back.
 
-This is a native-plugin rewrite of the original
-[hypr_screen](https://github.com/) Flutter/GTK app. Moving it into the
-Omarchy shell process removes an entire class of problems the standalone app
-had: a `libflutter_linux_gtk.so` that could go missing after an Omarchy
-upgrade, a separate installed binary that could fall out of sync with the
-source, and manual `windowrule`/keybind plumbing to make its window float
-and center. Plugins run inside the same long-lived `omarchy-shell`
-(Quickshell) process, so none of that applies.
+This is a native-plugin rewrite of an earlier standalone hypr_screen
+Flutter/GTK app. Moving it into the Omarchy shell process removes an entire
+class of problems the standalone app had: a `libflutter_linux_gtk.so` that
+could go missing after an Omarchy upgrade, a separate installed binary that
+could fall out of sync with the source, and manual `windowrule`/keybind
+plumbing to make its window float and center. Plugins run inside the same
+long-lived `omarchy-shell` (Quickshell) process, so none of that applies.
+
+## Requirements
+
+- Omarchy quattro or later — specifically, a Lua-based Hyprland config
+  (`~/.config/hypr/hyprland.lua`, requiring `hypr.monitors` etc.). Earlier
+  Omarchy releases used a plain-text `hyprland.conf`/`monitors.conf`, which
+  this plugin doesn't target.
+- No other dependencies beyond what a working Omarchy install already has:
+  `bash`, `hyprctl`, and standard coreutils (`grep`, `sed`, `ls`, `mkdir`,
+  `rm`), all invoked locally — no network access, no additional packages,
+  no privilege escalation.
 
 ## What it does
 
@@ -64,6 +74,14 @@ o.bind("SUPER + SHIFT + P", "Monitor Profiles switcher",
 (Or bind a second key to `{"mode":"editor"}` — that's also the default
 when no mode is given, matching the old app's plain/`--next` split.)
 
+The first time you open it, if `hyprland.lua` doesn't yet load what this
+plugin writes (see "Applying a profile" below), it shows a setup banner
+instead of the switcher/editor — Save and Apply still work either way
+(they're just file writes), but nothing reaches the screen until that's
+wired up. The banner's "Add it for me" button does it for you; "Skip for
+now" dismisses it for the rest of the session so it won't re-nag on every
+keypress before you get to it.
+
 ## Profile storage
 
 Profiles live in `~/.config/hypr/profiles/*.conf`, one `monitor = ...` line
@@ -89,6 +107,24 @@ the `hypr_screen.lua` name/require-path from the original app rather than
 being renamed to match the plugin — it's wired into `hyprland.lua` already
 on machines that had the old app, and renaming it buys nothing.)
 
+## Uninstall
+
+```sh
+omarchy plugin remove dev.stephenschwarz.monitor-profiles
+```
+
+This unloads the plugin and removes it from `~/.config/omarchy/plugins/`
+(or, for a symlinked dev checkout, just unlinks it — your clone is
+untouched either way). It does **not** remove, and you may want to clean up
+by hand:
+
+- The `pcall(require, "hypr.hypr_screen")` line in `~/.config/hypr/hyprland.lua`
+  (harmless to leave — the `pcall` no-ops once the file it requires is gone
+  — but it's dead weight).
+- `~/.config/hypr/hypr_screen.lua`, the last-applied layout.
+- `~/.config/hypr/profiles/*.conf`, your saved profiles.
+- Your own keybind in `~/.config/hypr/bindings.lua`, if you added one.
+
 ## Development
 
 ```sh
@@ -109,6 +145,7 @@ reload with `omarchy-restart-shell`.
 - `SwitcherView.qml` — the quick-switch list
 - `EditorView.qml` — the visual editor (sidebar + canvas + inspector)
 - `MonitorRect.qml`, `InspectorField.qml`, `ActionButton.qml`, `ModeTab.qml` — small shared components
+- `SetupBanner.qml` — first-run "hyprland.lua isn't wired up yet" prompt
 - `Model.js` — profile parsing/serialization, Lua translation, live-monitor mapping
 
 ## License
