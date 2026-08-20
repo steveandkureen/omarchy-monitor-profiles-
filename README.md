@@ -89,6 +89,12 @@ per monitor — unchanged from the original app, so existing profiles keep
 working with no migration step. This is just the plugin's own storage
 format; Hyprland never reads these files directly.
 
+The first time the panel opens with no profiles saved anywhere yet, it
+saves your live layout as one called `current` — so the switcher isn't
+empty and there's a known-good fallback to revert to while you set up the
+rest. This only happens once; delete `current` and it stays deleted unless
+every other profile is gone too.
+
 ## Applying a profile
 
 Omarchy quattro moved Hyprland's own config from `hyprland.conf`/
