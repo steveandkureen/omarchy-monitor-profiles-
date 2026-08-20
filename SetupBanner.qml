@@ -1,86 +1,60 @@
 import QtQuick
 import qs.Commons
 
-// Shown when hyprland.lua doesn't yet load the file this plugin writes on
-// Apply/Save — Apply and Save still work fine either way (they're just
-// file writes), but without this nothing a profile changes ever reaches
-// the screen, which reads as the plugin doing nothing. Every fresh
-// install needs this once.
+// Two independent first-run checklist items:
+//  - hyprland.lua loading what this plugin writes on Apply/Save. Without
+//    this, Apply/Save still work fine (they're just file writes), but
+//    nothing ever reaches the screen, which reads as the plugin doing
+//    nothing. Genuinely blocks functionality, so this banner shows
+//    whenever it's outstanding.
+//  - a keybind summoning this plugin. Omarchy has no manifest-level way
+//    for a plugin to declare/register one (checked), so this is offered
+//    the same "detect it, one click to fix it" way as the config item,
+//    just aimed at bindings.lua instead. Doesn't block anything (the
+//    switcher/editor are still reachable via the desktop entry or a
+//    manual summon either way) — suggested, not required.
 Item {
   id: root
 
-  signal wireUpRequested()
+  property bool configReady: false
+  property bool keybindReady: false
+
+  signal wireUpConfigRequested()
+  signal wireUpKeybindRequested()
   signal dismissed()
 
   Column {
     anchors.centerIn: parent
-    width: Math.min(parent.width - Style.space(48), Style.space(420))
-    spacing: Style.space(14)
+    width: Math.min(parent.width - Style.space(48), Style.space(440))
+    spacing: Style.space(16)
 
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
-      text: "Setup required"
+      text: root.configReady ? "Suggested setup" : "Setup required"
       font.family: Style.font.family
       font.bold: true
       font.pixelSize: Style.font.heading
       color: Color.foreground
     }
 
-    Text {
+    SetupItem {
       width: parent.width
-      wrapMode: Text.Wrap
-      horizontalAlignment: Text.AlignHCenter
-      color: Color.muted
-      font.family: Style.font.family
-      font.pixelSize: Style.font.bodySmall
-      text: "Hyprland's config doesn't load this plugin's monitor layouts yet. " +
-        "Add one line to ~/.config/hypr/hyprland.lua, right after require(\"hypr.monitors\"):"
+      done: root.configReady
+      title: "Apply monitor layouts"
+      body: "Hyprland's config doesn't load this plugin's monitor layouts yet. Add one line to ~/.config/hypr/hyprland.lua, right after require(\"hypr.monitors\"):"
+      snippet: 'pcall(require, "hypr.hypr_screen")'
+      doneText: "hyprland.lua already loads it"
+      onAddRequested: root.wireUpConfigRequested()
     }
 
-    Rectangle {
+    SetupItem {
       width: parent.width
-      height: Style.space(34)
-      radius: Style.cornerRadius
-      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
-      border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.2)
-      border.width: 1
-
-      Text {
-        anchors.centerIn: parent
-        text: 'pcall(require, "hypr.hypr_screen")'
-        font.family: Style.font.family
-        font.pixelSize: Style.font.bodySmall
-        color: Color.accent
-      }
-    }
-
-    Rectangle {
-      anchors.horizontalCenter: parent.horizontalCenter
-      width: addButtonLabel.implicitWidth + Style.space(28)
-      height: Style.space(32)
-      radius: Style.cornerRadius
-      color: addButtonArea.pressed
-        ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
-        : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-      border.color: Color.accent
-      border.width: 1
-
-      Text {
-        id: addButtonLabel
-        anchors.centerIn: parent
-        text: "Add it for me"
-        color: Color.foreground
-        font.family: Style.font.family
-        font.pixelSize: Style.font.bodySmall
-        font.bold: true
-      }
-
-      MouseArea {
-        id: addButtonArea
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.wireUpRequested()
-      }
+      done: root.keybindReady
+      title: "Open it with a keybind"
+      body: "No keybind summons this plugin yet. Add SUPER+SHIFT+P to ~/.config/hypr/bindings.lua (freely changeable afterward):"
+      snippet: "SUPER + SHIFT + P"
+      doneText: "a keybind is already set"
+      onAddRequested: root.wireUpKeybindRequested()
     }
 
     Text {

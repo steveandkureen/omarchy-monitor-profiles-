@@ -28,6 +28,7 @@ Item {
   readonly property string profilesDir: root.home + "/.config/hypr/profiles"
   readonly property string hyprScreenLuaPath: root.home + "/.config/hypr/hypr_screen.lua"
   readonly property string hyprlandLuaPath: root.home + "/.config/hypr/hyprland.lua"
+  readonly property string bindingsLuaPath: root.home + "/.config/hypr/bindings.lua"
   readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.monitor-profiles"
 
   property var switcherProfiles: []
@@ -43,11 +44,23 @@ Item {
   // happens (the button below, or by hand per the README).
   property bool configChecked: false
   property bool configReady: false
+  // Whether *any* keybind summons this plugin (detected by our own id
+  // showing up anywhere in bindings.lua — not which key, since that's a
+  // matter of taste). There's no Omarchy-level mechanism for a plugin to
+  // declare or register a keybind (checked the manifest schema — no such
+  // field exists), so this is the same "detect it, offer to fix it" trick
+  // as the hyprland.lua check above, just aimed at bindings.lua instead.
+  // Unlike that one, a missing keybind doesn't block anything (the
+  // switcher/editor are still fully reachable via the desktop entry or a
+  // manual summon), so it's suggested rather than gating.
+  property bool keybindChecked: false
+  property bool keybindReady: false
   // Sticky for the life of this shell process once set, not just this
   // open/close cycle — otherwise the switcher keybind would re-nag on
   // every single press until the user gets around to fixing it.
   property bool setupDismissed: false
-  readonly property bool showSetupBanner: configChecked && !configReady && !setupDismissed
+  readonly property bool showSetupBanner: configChecked && keybindChecked &&
+    (!configReady || !keybindReady) && !setupDismissed
 
   function open(payloadJson) {
     var payload = {}
@@ -56,6 +69,7 @@ Item {
     root.switcherTimeout = payload.timeout !== undefined ? Number(payload.timeout) : 10
     if (root.mode === "switcher") refreshSwitcherProfiles()
     checkConfig()
+    checkKeybind()
     ensureProfilesSeeded()
     root.opened = true
     Qt.callLater(root.focusActiveView)
@@ -127,6 +141,16 @@ Item {
   function wireUpConfig() {
     configWireUpProc.running = false
     configWireUpProc.running = true
+  }
+
+  function checkKeybind() {
+    keybindCheckProc.running = false
+    keybindCheckProc.running = true
+  }
+
+  function wireUpKeybind() {
+    keybindFile.path = root.bindingsLuaPath
+    keybindFile.reload()
   }
 
   // Keyboard nav (SwitcherView's arrow keys/Enter) only fires while that
@@ -251,6 +275,62 @@ Item {
     onExited: root.checkConfig()
   }
 
+  Process {
+    id: keybindCheckProc
+    command: ["bash", "-lc", "grep -q " + root.pluginId + " \"" + root.bindingsLuaPath + "\" 2>/dev/null && echo yes || echo no"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.keybindReady = String(text || "").trim() === "yes"
+        root.keybindChecked = true
+      }
+    }
+  }
+
+  // SUPER+SHIFT+P, matching the README — appended to the end of
+  // bindings.lua (that file is just a flat list of hl.unbind/o.bind calls,
+  // no anchor to insert relative to the way hyprland.lua has one). Omarchy
+  // quattro's own default bindings claim SUPER+SHIFT+P for a webapp
+  // (Google Photos), so the unbind isn't defensive — every fresh install
+  // needs it.
+  //
+  // Read-modify-write via FileView rather than a bash one-liner: the line
+  // this needs to produce nests a JSON payload inside a shell single-quoted
+  // string inside a Lua double-quoted string, and hand-escaping that
+  // through an *additional* bash -lc layer on top is exactly the kind of
+  // thing that's gone wrong by hand elsewhere in this file's history.
+  // JSON.stringify() on the plain-text command line does the Lua-string
+  // escaping correctly in one step (Lua and JSON agree on how to escape "
+  // and \\) with nothing to get wrong by hand.
+  function keybindSnippet() {
+    var summonCmd = "omarchy-shell shell summon " + root.pluginId + " '{\"mode\":\"switcher\"}'"
+    return "\n-- Monitor Profiles switcher (added by the plugin itself; change the key freely)\n" +
+      "hl.unbind(\"SUPER + SHIFT + P\")\n" +
+      "o.bind(\"SUPER + SHIFT + P\", \"Monitor Profiles switcher\",\n" +
+      "  " + JSON.stringify(summonCmd) + ")\n"
+  }
+
+  FileView {
+    id: keybindFile
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      var current = text()
+      if (current.indexOf(root.pluginId) < 0) {
+        keybindFile.setText(current + root.keybindSnippet())
+        keybindReloadProc.running = true
+      } else {
+        root.checkKeybind()
+      }
+    }
+  }
+
+  Process {
+    id: keybindReloadProc
+    command: ["hyprctl", "reload"]
+    onExited: root.checkKeybind()
+  }
+
   PanelWindow {
     visible: root.opened
     anchors { top: true; bottom: true; left: true; right: true }
@@ -346,7 +426,10 @@ Item {
               SetupBanner {
                 anchors.fill: parent
                 visible: root.showSetupBanner
-                onWireUpRequested: root.wireUpConfig()
+                configReady: root.configReady
+                keybindReady: root.keybindReady
+                onWireUpConfigRequested: root.wireUpConfig()
+                onWireUpKeybindRequested: root.wireUpKeybind()
                 onDismissed: root.setupDismissed = true
               }
 

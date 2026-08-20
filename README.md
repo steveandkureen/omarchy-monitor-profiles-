@@ -93,7 +93,12 @@ omarchy plugin enable dev.stephenschwarz.monitor-profiles
 
 ## Keybind
 
-Add to `~/.config/hypr/bindings.lua`:
+Omarchy has no manifest-level way for a plugin to declare or register a
+keybind, so this is suggested rather than automatic: the setup banner
+below offers to add it for you the first time none is found (checked by
+looking for this plugin's id anywhere in `bindings.lua`, not which key —
+change it freely afterward). To do it by hand instead, add to
+`~/.config/hypr/bindings.lua`:
 
 ```lua
 hl.unbind("SUPER + SHIFT + P")
@@ -105,11 +110,13 @@ o.bind("SUPER + SHIFT + P", "Monitor Profiles switcher",
 when no mode is given, matching the old app's plain/`--next` split.)
 
 The first time you open it, if `hyprland.lua` doesn't yet load what this
-plugin writes (see "Applying a profile" below), it shows a setup banner
-instead of the switcher/editor — Save and Apply still work either way
-(they're just file writes), but nothing reaches the screen until that's
-wired up. The banner's "Add it for me" button does it for you; "Skip for
-now" dismisses it for the rest of the session so it won't re-nag on every
+plugin writes (see "Applying a profile" below) and/or no keybind is set,
+it shows a setup banner instead of the switcher/editor with one checklist
+item per thing that's outstanding — Save and Apply still work regardless
+(they're just file writes), but nothing reaches the screen until
+hyprland.lua is wired up. Each item's own "Add it for me" button does it
+for you; "Skip for now" dismisses the whole banner for the rest of the
+session so it won't re-nag on every
 keypress before you get to it.
 
 ## Profile storage
