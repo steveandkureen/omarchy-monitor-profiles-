@@ -135,8 +135,9 @@ Item {
   // would silently swallow those keys instead of reaching the switcher.
   function focusActiveView() {
     if (!root.opened) return
-    if (root.mode === "switcher" && !root.showSetupBanner) switcherView.forceActiveFocus()
-    else keyCatcher.forceActiveFocus()
+    if (root.showSetupBanner) { keyCatcher.forceActiveFocus(); return }
+    if (root.mode === "switcher") switcherView.forceActiveFocus()
+    else editorView.forceActiveFocus()
   }
   // The config check is async, so showSetupBanner can flip after the
   // initial focusActiveView() call already ran (e.g. focus went to
@@ -274,6 +275,16 @@ Item {
       anchors.fill: parent
       focus: true
       Keys.onEscapePressed: root.dismiss()
+      // Reached by bubbling: neither SwitcherView nor EditorView's own
+      // Keys.onPressed claims Tab, so an unhandled press lands here
+      // regardless of which one currently has focus — switching modes
+      // without a mouse, same as clicking the Switch/Edit tabs.
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Tab) {
+          root.setMode(root.mode === "switcher" ? "editor" : "switcher")
+          event.accepted = true
+        }
+      }
 
       Item {
         anchors.centerIn: parent
@@ -348,6 +359,7 @@ Item {
               }
 
               EditorView {
+                id: editorView
                 anchors.fill: parent
                 visible: root.mode === "editor" && !root.showSetupBanner
                 profilesRevision: root.profilesRevision

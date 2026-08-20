@@ -46,6 +46,35 @@ Applying a profile writes `~/.config/hypr/hypr_screen.lua` as `hl.monitor(...)`
 calls (the format Hyprland's Lua config actually understands — see
 "Applying a profile", below) and runs `hyprctl reload`.
 
+## Keyboard-only editing
+
+Everything in the editor works without a mouse, in three vim-style modes
+(a hint row under the canvas always shows the current one's bindings):
+
+**Normal** (default)
+
+| Key | Action |
+|---|---|
+| `h` `j` `k` `l` / arrows | select the nearest tile in that direction |
+| `i` | enter Move mode on the selected tile |
+| `e` | toggle enabled/disabled |
+| `r` | rotate 90° |
+| `Shift+R` | rename (enter Naming mode) |
+| `p` | make the selected tile primary |
+| `[` / `]` | previous/next saved profile |
+| `n` | load the live layout |
+| `s` | save (immediate if named, else enters Naming mode) |
+| `a` | apply now |
+| `dd` | delete the current profile |
+| `Tab` | switch between Switch/Edit panel modes |
+
+**Move** (`i` from Normal) — `h`/`j`/`k`/`l`/arrows nudge the selected tile
+(or pan the canvas, if it's the primary — same distinction as dragging it
+with the mouse); hold Shift for a finer step. `Esc` returns to Normal.
+
+**Naming** (`s` with no name yet, or `Shift+R`) — type to edit the name;
+`Enter` saves, `Esc` cancels.
+
 ## Install
 
 ```sh

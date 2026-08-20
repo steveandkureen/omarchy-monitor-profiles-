@@ -46,6 +46,128 @@ Item {
 
   signal applied()
 
+  // ---- keyboard-only editing -------------------------------------------
+  //
+  // "normal": h/j/k/l (or arrows) move the *selection* to the nearest tile
+  //   in that direction — same idea as Hyprland's own movefocus. i enters
+  //   move mode on the selected tile (selecting the first one first if
+  //   none is selected yet). Everything else is a single mnemonic key; see
+  //   the hint row at the bottom of the canvas, which always shows the
+  //   current mode's bindings.
+  // "move": h/j/k/l nudge the selected tile (or pan the canvas, if it's
+  //   the primary — same distinction as dragging it with the mouse). Hold
+  //   Shift for a finer step. Esc returns to normal without needing to
+  //   "confirm" — each nudge already committed to root.monitors when it
+  //   happened, same as a mouse drag committing on release.
+  // "naming": the profile name field has focus; Enter saves, Esc cancels.
+  property string editorMode: "normal"
+  readonly property real moveStepUnits: 80
+  readonly property real moveStepFineUnits: 10
+
+  function selectDirection(dir) {
+    if (root.monitors.length === 0) return
+    if (root.selectedMonitorIndex < 0 || root.selectedMonitorIndex >= root.monitors.length) {
+      root.selectedMonitorIndex = 0
+      return
+    }
+    var current = canvasArea.rectFor(root.monitors[root.selectedMonitorIndex])
+    var cx = current.x + current.width / 2
+    var cy = current.y + current.height / 2
+    var best = -1
+    var bestScore = Infinity
+    for (var i = 0; i < root.monitors.length; i++) {
+      if (i === root.selectedMonitorIndex) continue
+      var r = canvasArea.rectFor(root.monitors[i])
+      var dx = (r.x + r.width / 2) - cx
+      var dy = (r.y + r.height / 2) - cy
+      var primary, lateral
+      if (dir === "left") { if (dx >= -1) continue; primary = -dx; lateral = Math.abs(dy) }
+      else if (dir === "right") { if (dx <= 1) continue; primary = dx; lateral = Math.abs(dy) }
+      else if (dir === "up") { if (dy >= -1) continue; primary = -dy; lateral = Math.abs(dx) }
+      else { if (dy <= 1) continue; primary = dy; lateral = Math.abs(dx) }
+      // Favor the tile mostly in the requested direction over one that's
+      // merely closer but well off to the side — weighting lateral offset
+      // more than direct distance is what keeps e.g. "up" from jumping
+      // sideways to a nearer tile that isn't really above you.
+      var score = primary + lateral * 2
+      if (score < bestScore) { bestScore = score; best = i }
+    }
+    if (best >= 0) root.selectedMonitorIndex = best
+  }
+
+  function collidesAtUnits(index, xUnits, yUnits) {
+    var m = root.monitors[index]
+    var w = (m.transform % 2 === 1) ? m.height / m.scale : m.width / m.scale
+    var h = (m.transform % 2 === 1) ? m.width / m.scale : m.height / m.scale
+    var ax1 = xUnits, ax2 = xUnits + w, ay1 = yUnits, ay2 = yUnits + h
+    for (var i = 0; i < root.monitors.length; i++) {
+      if (i === index) continue
+      var o = root.monitors[i]
+      var ow = (o.transform % 2 === 1) ? o.height / o.scale : o.width / o.scale
+      var oh = (o.transform % 2 === 1) ? o.width / o.scale : o.height / o.scale
+      var bx1 = o.x, bx2 = o.x + ow, by1 = o.y, by2 = o.y + oh
+      if (ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1) return true
+    }
+    return false
+  }
+
+  function nudgeSelected(dxUnits, dyUnits) {
+    var idx = root.selectedMonitorIndex
+    if (idx < 0 || idx >= root.monitors.length) return
+    if (idx === root.primaryIndex) {
+      // Same distinction as dragging it with the mouse: the primary stays
+      // at (0,0) in the data, so "moving" it pans the shared frame instead.
+      canvasArea.boundMinX -= dxUnits
+      canvasArea.boundMinY -= dyUnits
+      return
+    }
+    var m = root.monitors[idx]
+    var candidateX = m.x + dxUnits
+    var candidateY = m.y + dyUnits
+    if (root.collidesAtUnits(idx, candidateX, candidateY)) return
+    var next = root.monitors.slice()
+    next[idx] = Object.assign({}, m, { x: Math.round(candidateX), y: Math.round(candidateY) })
+    root.monitors = next
+  }
+
+  function toggleEnabledSelected() {
+    if (root.selectedMonitor) root.updateSelected({ enabled: !root.selectedMonitor.enabled })
+  }
+
+  function rotateSelected() {
+    if (root.selectedMonitor) root.updateSelected({ transform: (root.selectedMonitor.transform + 1) % 4 })
+  }
+
+  function cycleProfile(delta) {
+    if (root.profileNames.length === 0) return
+    var i = root.profileNames.indexOf(root.profileName)
+    var next = i < 0
+      ? (delta > 0 ? 0 : root.profileNames.length - 1)
+      : (i + delta + root.profileNames.length) % root.profileNames.length
+    root.loadProfile(root.profileNames[next])
+  }
+
+  function deleteCurrentProfile() {
+    if (root.profileNames.indexOf(root.profileName) < 0) return
+    root.deleteProfile(root.profileName)
+  }
+
+  function saveOrRename() {
+    if (root.profileName.trim() !== "") { root.saveProfile(); return }
+    root.startRename()
+  }
+
+  function startRename() {
+    root.editorMode = "naming"
+    Qt.callLater(function() { nameInput.forceActiveFocus(); nameInput.selectAll() })
+  }
+
+  function finishNaming(shouldSave) {
+    root.editorMode = "normal"
+    if (shouldSave) root.saveProfile()
+    root.forceActiveFocus()
+  }
+
   function refreshProfileList() {
     listProc.running = false
     listProc.running = true
@@ -113,6 +235,62 @@ Item {
   Component.onCompleted: {
     refreshProfileList()
     if (root.monitors.length === 0) loadLiveLayout()
+  }
+
+  // "dd" to delete, vim-style: the first d arms a short window for the
+  // second one rather than deleting immediately on a single keystroke.
+  property bool pendingDelete: false
+  Timer { id: pendingDeleteTimer; interval: 650; onTriggered: root.pendingDelete = false }
+
+  focus: true
+  Keys.onPressed: function(event) {
+    if (root.editorMode === "naming") return // nameInput has its own focus/handlers while active
+
+    if (root.editorMode === "move") {
+      var fine = (event.modifiers & Qt.ShiftModifier) !== 0
+      var step = fine ? root.moveStepFineUnits : root.moveStepUnits
+      if (event.key === Qt.Key_H || event.key === Qt.Key_Left) { root.nudgeSelected(-step, 0); event.accepted = true }
+      else if (event.key === Qt.Key_L || event.key === Qt.Key_Right) { root.nudgeSelected(step, 0); event.accepted = true }
+      else if (event.key === Qt.Key_K || event.key === Qt.Key_Up) { root.nudgeSelected(0, -step); event.accepted = true }
+      else if (event.key === Qt.Key_J || event.key === Qt.Key_Down) { root.nudgeSelected(0, step); event.accepted = true }
+      else if (event.key === Qt.Key_Escape) { root.editorMode = "normal"; event.accepted = true }
+      return
+    }
+
+    // normal mode
+    if (event.key === Qt.Key_D) {
+      if (root.pendingDelete) { root.pendingDelete = false; pendingDeleteTimer.stop(); root.deleteCurrentProfile() }
+      else { root.pendingDelete = true; pendingDeleteTimer.restart() }
+      event.accepted = true
+      return
+    }
+    if (root.pendingDelete) { root.pendingDelete = false; pendingDeleteTimer.stop() } // any other key cancels "d"
+
+    if (event.key === Qt.Key_H || event.key === Qt.Key_Left) { root.selectDirection("left"); event.accepted = true }
+    else if (event.key === Qt.Key_L || event.key === Qt.Key_Right) { root.selectDirection("right"); event.accepted = true }
+    else if (event.key === Qt.Key_K || event.key === Qt.Key_Up) { root.selectDirection("up"); event.accepted = true }
+    else if (event.key === Qt.Key_J || event.key === Qt.Key_Down) { root.selectDirection("down"); event.accepted = true }
+    else if (event.key === Qt.Key_I) {
+      if (root.selectedMonitorIndex < 0 && root.monitors.length > 0) root.selectedMonitorIndex = 0
+      if (root.selectedMonitorIndex >= 0) root.editorMode = "move"
+      event.accepted = true
+    }
+    else if (event.key === Qt.Key_E) { root.toggleEnabledSelected(); event.accepted = true }
+    else if (event.key === Qt.Key_R) {
+      if (event.modifiers & Qt.ShiftModifier) root.startRename()
+      else root.rotateSelected()
+      event.accepted = true
+    }
+    else if (event.key === Qt.Key_P) { if (root.selectedMonitorIndex >= 0) root.setPrimary(root.selectedMonitorIndex); event.accepted = true }
+    else if (event.key === Qt.Key_BracketLeft) { root.cycleProfile(-1); event.accepted = true }
+    else if (event.key === Qt.Key_BracketRight) { root.cycleProfile(1); event.accepted = true }
+    else if (event.key === Qt.Key_N) { root.loadLiveLayout(); event.accepted = true }
+    else if (event.key === Qt.Key_S) { root.saveOrRename(); event.accepted = true }
+    else if (event.key === Qt.Key_A) { root.applyNow(); event.accepted = true }
+    // Escape is deliberately not handled here — unhandled, it bubbles up
+    // to Panel.qml's keyCatcher, which dismisses the whole panel. That
+    // matches every other "normal mode" in this plugin (nothing to back
+    // out of locally) the same way Esc already works in the switcher.
   }
 
   // ---- process/file plumbing ----------------------------------------
@@ -274,7 +452,7 @@ Item {
       Item {
         id: canvasArea
         width: parent.width
-        height: parent.height - inspector.height - saveBar.height
+        height: parent.height - hintBar.height - inspector.height - saveBar.height
 
         readonly property real margin: Style.space(24)
         // Fraction of the scale-to-fit size tiles actually render at, so
@@ -387,6 +565,31 @@ Item {
         }
       }
 
+      // Keyboard-mode hint line. Fixed height for the same reason as the
+      // inspector below — canvasArea's frame must not move just because
+      // the hint text changed length switching modes.
+      Item {
+        id: hintBar
+        width: parent.width
+        height: Style.space(20)
+
+        Text {
+          anchors.left: parent.left
+          anchors.leftMargin: Style.space(10)
+          anchors.verticalCenter: parent.verticalCenter
+          color: Color.muted
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          text: {
+            if (root.editorMode === "move")
+              return "MOVE  hjkl/⇧hjkl nudge · esc done"
+            if (root.editorMode === "naming")
+              return "NAME  enter save · esc cancel"
+            return "hjkl select · i move · r rotate · e enable · p primary · [ ] profile · s save · a apply · dd delete"
+          }
+        }
+      }
+
       // Inspector for the selected monitor. Height is constant (not tied to
       // whether something is selected) so canvasArea's size — and so the
       // whole canvas-pixel coordinate frame every tile positions itself in
@@ -491,6 +694,7 @@ Item {
           border.width: 1
 
           TextInput {
+            id: nameInput
             anchors.fill: parent
             anchors.margins: Style.space(6)
             verticalAlignment: TextInput.AlignVCenter
@@ -498,7 +702,15 @@ Item {
             color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
+            selectByMouse: true
             onTextEdited: root.profileName = text
+            // Only meaningful while "naming" mode has given this field
+            // focus (typing "s"/Shift+R from normal mode) — a plain mouse
+            // click into the field still works too, just without the
+            // mode's Enter/Esc conventions.
+            Keys.onReturnPressed: root.finishNaming(true)
+            Keys.onEnterPressed: root.finishNaming(true)
+            Keys.onEscapePressed: root.finishNaming(false)
             Text {
               visible: parent.text === ""
               text: "profile name…"
