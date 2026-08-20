@@ -29,6 +29,7 @@ Item {
   readonly property string hyprScreenLuaPath: root.home + "/.config/hypr/hypr_screen.lua"
   readonly property string hyprlandLuaPath: root.home + "/.config/hypr/hyprland.lua"
   readonly property string bindingsLuaPath: root.home + "/.config/hypr/bindings.lua"
+  readonly property string omarchyMenuExtensionsPath: root.home + "/.config/omarchy/extensions/omarchy-menu.jsonc"
   readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.monitor-profiles"
 
   property var switcherProfiles: []
@@ -44,23 +45,33 @@ Item {
   // happens (the button below, or by hand per the README).
   property bool configChecked: false
   property bool configReady: false
+  // Whether this plugin is registered in the Omarchy menu — the actual
+  // idiomatic way a panel-kind plugin like this becomes keyboard-reachable:
+  // first-party panel plugins with no bar icon (wifiqr, speedtest,
+  // disk-speedtest — the same kind this plugin declares) aren't bound to a
+  // dedicated Hyprland key at all; they're rows in
+  // ~/.config/omarchy/extensions/omarchy-menu.jsonc, opened via
+  // `omarchy-shell shell summon <id> ...`, and reached through the Omarchy
+  // menu's own search. That sidesteps key-conflict risk entirely (see the
+  // keybind item below, which grabbed SUPER+SHIFT+P away from a default
+  // Omarchy binding) and is where a first-time user would actually look.
+  property bool menuEntryChecked: false
+  property bool menuEntryReady: false
   // Whether *any* keybind summons this plugin (detected by our own id
   // showing up anywhere in bindings.lua — not which key, since that's a
   // matter of taste). There's no Omarchy-level mechanism for a plugin to
   // declare or register a keybind (checked the manifest schema — no such
-  // field exists), so this is the same "detect it, offer to fix it" trick
-  // as the hyprland.lua check above, just aimed at bindings.lua instead.
-  // Unlike that one, a missing keybind doesn't block anything (the
-  // switcher/editor are still fully reachable via the desktop entry or a
-  // manual summon), so it's suggested rather than gating.
+  // field exists). Offered alongside the menu entry above, not instead of
+  // it, since a direct hotkey is still faster once you've settled on one —
+  // just not the first thing to suggest.
   property bool keybindChecked: false
   property bool keybindReady: false
   // Sticky for the life of this shell process once set, not just this
   // open/close cycle — otherwise the switcher keybind would re-nag on
   // every single press until the user gets around to fixing it.
   property bool setupDismissed: false
-  readonly property bool showSetupBanner: configChecked && keybindChecked &&
-    (!configReady || !keybindReady) && !setupDismissed
+  readonly property bool showSetupBanner: configChecked && keybindChecked && menuEntryChecked &&
+    (!configReady || !keybindReady || !menuEntryReady) && !setupDismissed
 
   function open(payloadJson) {
     var payload = {}
@@ -70,6 +81,7 @@ Item {
     if (root.mode === "switcher") refreshSwitcherProfiles()
     checkConfig()
     checkKeybind()
+    checkMenuEntry()
     ensureProfilesSeeded()
     root.opened = true
     Qt.callLater(root.focusActiveView)
@@ -151,6 +163,16 @@ Item {
   function wireUpKeybind() {
     keybindFile.path = root.bindingsLuaPath
     keybindFile.reload()
+  }
+
+  function checkMenuEntry() {
+    menuEntryCheckProc.running = false
+    menuEntryCheckProc.running = true
+  }
+
+  function wireUpMenuEntry() {
+    menuEntryFile.path = root.omarchyMenuExtensionsPath
+    menuEntryFile.reload()
   }
 
   // Keyboard nav (SwitcherView's arrow keys/Enter) only fires while that
@@ -331,6 +353,64 @@ Item {
     onExited: root.checkKeybind()
   }
 
+  Process {
+    id: menuEntryCheckProc
+    command: ["bash", "-lc", "grep -q " + root.pluginId + " \"" + root.omarchyMenuExtensionsPath + "\" 2>/dev/null && echo yes || echo no"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.menuEntryReady = String(text || "").trim() === "yes"
+        root.menuEntryChecked = true
+      }
+    }
+  }
+
+  // The whole file is one JSON(C) object; the simplest safe edit is
+  // splicing a new entry in just before its closing brace, same idea as
+  // the config/keybind read-modify-writes above but text-spliced instead
+  // of appended, since this format doesn't end in a way new lines can just
+  // follow. JSON.stringify() on the entry object (not hand-built field by
+  // field) handles the icon glyph, label, and embedded-quote payload
+  // correctly in one step — JSONC tolerates the trailing comma this always
+  // leaves before "}" (its own header comment says so: "comments, and
+  // trailing commas").
+  function menuEntrySnippet() {
+    var entry = {
+      icon: "󰍹",
+      label: "Monitor Profiles",
+      aliases: ["monitor-profiles", "monitors"],
+      description: "Switch to a saved monitor layout",
+      action: "omarchy-shell shell summon " + root.pluginId + " '{\"mode\":\"switcher\"}'"
+    }
+    return "  \"trigger.monitor-profiles\": " + JSON.stringify(entry) + ",\n"
+  }
+
+  FileView {
+    id: menuEntryFile
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      var current = text()
+      if (current.indexOf(root.pluginId) >= 0) { root.checkMenuEntry(); return }
+      var lastBrace = current.lastIndexOf("}")
+      var updated = lastBrace >= 0
+        ? current.slice(0, lastBrace) + root.menuEntrySnippet() + current.slice(lastBrace)
+        : current + "\n" + root.menuEntrySnippet()
+      menuEntryFile.setText(updated)
+      menuRefreshProc.running = true
+    }
+  }
+
+  Process {
+    id: menuRefreshProc
+    // shell.json/bindings.lua-style plugins get picked up by
+    // watchChanges: true on the shell's side per the plugins README, but
+    // this makes the reload explicit and immediate rather than relying on
+    // that alone.
+    command: ["omarchy", "menu", "refresh"]
+    onExited: root.checkMenuEntry()
+  }
+
   PanelWindow {
     visible: root.opened
     anchors { top: true; bottom: true; left: true; right: true }
@@ -376,8 +456,13 @@ Item {
 
       Item {
         anchors.centerIn: parent
-        readonly property real cardWidth: root.mode === "switcher" ? Style.space(420) : Style.space(980)
-        readonly property real cardHeight: root.mode === "switcher" ? Style.space(480) : Style.space(680)
+        // The setup banner's three-item checklist needs more room than the
+        // switcher's deliberately compact card provides — use the editor's
+        // larger size whenever it's showing, regardless of which mode was
+        // actually requested.
+        readonly property bool useWideCard: root.showSetupBanner || root.mode === "editor"
+        readonly property real cardWidth: useWideCard ? Style.space(980) : Style.space(420)
+        readonly property real cardHeight: useWideCard ? Style.space(680) : Style.space(480)
         width: cardWidth
         height: cardHeight
         scale: Math.min(1,
@@ -427,8 +512,10 @@ Item {
                 anchors.fill: parent
                 visible: root.showSetupBanner
                 configReady: root.configReady
+                menuEntryReady: root.menuEntryReady
                 keybindReady: root.keybindReady
                 onWireUpConfigRequested: root.wireUpConfig()
+                onWireUpMenuEntryRequested: root.wireUpMenuEntry()
                 onWireUpKeybindRequested: root.wireUpKeybind()
                 onDismissed: root.setupDismissed = true
               }

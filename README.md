@@ -91,32 +91,46 @@ omarchy-shell shell rescanPlugins
 omarchy plugin enable dev.stephenschwarz.monitor-profiles
 ```
 
-## Keybind
+## Getting to it without a mouse
 
-Omarchy has no manifest-level way for a plugin to declare or register a
-keybind, so this is suggested rather than automatic: the setup banner
-below offers to add it for you the first time none is found (checked by
-looking for this plugin's id anywhere in `bindings.lua`, not which key —
-change it freely afterward). To do it by hand instead, add to
-`~/.config/hypr/bindings.lua`:
+There's no bar icon (this plugin declares `kind: "panel"`, the same as
+Omarchy's own first-party `wifiqr`/`speedtest`/`disk-speedtest`), so it
+needs one of these:
 
-```lua
-hl.unbind("SUPER + SHIFT + P")
-o.bind("SUPER + SHIFT + P", "Monitor Profiles switcher",
-  "omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'")
-```
+- **Omarchy menu** — the idiomatic path for this class of plugin; none of
+  those three first-party ones use a dedicated keybind either. Search
+  "monitors" in the Omarchy menu, or run `omarchy menu summon
+  monitor-profiles` directly. Registered as a row in
+  `~/.config/omarchy/extensions/omarchy-menu.jsonc`:
+  ```jsonc
+  "trigger.monitor-profiles": {"icon":"󰍹","label":"Monitor Profiles","aliases":["monitor-profiles","monitors"],"description":"Switch to a saved monitor layout","action":"omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'"}
+  ```
+- **A direct keybind** — faster once you've picked a key, offered
+  alongside the menu entry rather than instead of it. Add to
+  `~/.config/hypr/bindings.lua`:
+  ```lua
+  hl.unbind("SUPER + SHIFT + P")
+  o.bind("SUPER + SHIFT + P", "Monitor Profiles switcher",
+    "omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'")
+  ```
+  (Or bind a second key to `{"mode":"editor"}` — that's also the default
+  when no mode is given, matching the old app's plain/`--next` split.)
 
-(Or bind a second key to `{"mode":"editor"}` — that's also the default
-when no mode is given, matching the old app's plain/`--next` split.)
+Omarchy has no manifest-level way for a plugin to declare or register
+either of these itself, so both are suggested rather than automatic: the
+setup banner below offers to add each one for you the first time it's
+missing (detected by looking for this plugin's id in the relevant file,
+not by which key/label you end up with — change either freely afterward).
 
 The first time you open it, if `hyprland.lua` doesn't yet load what this
-plugin writes (see "Applying a profile" below) and/or no keybind is set,
-it shows a setup banner instead of the switcher/editor with one checklist
-item per thing that's outstanding — Save and Apply still work regardless
-(they're just file writes), but nothing reaches the screen until
-hyprland.lua is wired up. Each item's own "Add it for me" button does it
-for you; "Skip for now" dismisses the whole banner for the rest of the
-session so it won't re-nag on every
+plugin writes (see "Applying a profile" below), and/or either of the two
+items above is missing, it shows a setup banner instead of the switcher/
+editor with one checklist item per thing that's outstanding — Save and
+Apply still work regardless (they're just file writes), but nothing
+reaches the screen until hyprland.lua is wired up; the menu entry and
+keybind are just suggested, not required. Each item's own "Add it for me"
+button does it for you; "Skip for now" dismisses the whole banner for the
+rest of the session so it won't re-nag on every
 keypress before you get to it.
 
 ## Profile storage

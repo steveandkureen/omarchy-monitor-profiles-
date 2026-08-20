@@ -1,32 +1,38 @@
 import QtQuick
 import qs.Commons
 
-// Two independent first-run checklist items:
+// Three independent first-run checklist items:
 //  - hyprland.lua loading what this plugin writes on Apply/Save. Without
 //    this, Apply/Save still work fine (they're just file writes), but
 //    nothing ever reaches the screen, which reads as the plugin doing
 //    nothing. Genuinely blocks functionality, so this banner shows
 //    whenever it's outstanding.
-//  - a keybind summoning this plugin. Omarchy has no manifest-level way
-//    for a plugin to declare/register one (checked), so this is offered
-//    the same "detect it, one click to fix it" way as the config item,
-//    just aimed at bindings.lua instead. Doesn't block anything (the
-//    switcher/editor are still reachable via the desktop entry or a
-//    manual summon either way) — suggested, not required.
+//  - an Omarchy menu entry. This is the idiomatic way a panel-kind plugin
+//    with no bar icon becomes keyboard-reachable — first-party equivalents
+//    (wifiqr, speedtest, disk-speedtest) all work this way, not via a
+//    dedicated Hyprland keybind.
+//  - a direct keybind, offered alongside the menu entry rather than
+//    instead of it: faster once you've picked a key, but picking one risks
+//    colliding with an existing default (this plugin's own suggestion,
+//    SUPER+SHIFT+P, took that combo away from a default Omarchy binding).
+// None of the three block each other; each is only "done" or not on its
+// own, and only the first one gates functionality.
 Item {
   id: root
 
   property bool configReady: false
+  property bool menuEntryReady: false
   property bool keybindReady: false
 
   signal wireUpConfigRequested()
+  signal wireUpMenuEntryRequested()
   signal wireUpKeybindRequested()
   signal dismissed()
 
   Column {
     anchors.centerIn: parent
     width: Math.min(parent.width - Style.space(48), Style.space(440))
-    spacing: Style.space(16)
+    spacing: Style.space(14)
 
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
@@ -45,6 +51,16 @@ Item {
       snippet: 'pcall(require, "hypr.hypr_screen")'
       doneText: "hyprland.lua already loads it"
       onAddRequested: root.wireUpConfigRequested()
+    }
+
+    SetupItem {
+      width: parent.width
+      done: root.menuEntryReady
+      title: "Add to the Omarchy menu"
+      body: "Not searchable from the Omarchy menu yet. Add a row to ~/.config/omarchy/extensions/omarchy-menu.jsonc:"
+      snippet: '"trigger.monitor-profiles": { "action": "omarchy-shell shell summon …" }'
+      doneText: "already registered — search “monitors”"
+      onAddRequested: root.wireUpMenuEntryRequested()
     }
 
     SetupItem {
