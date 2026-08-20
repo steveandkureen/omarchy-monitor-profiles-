@@ -21,8 +21,7 @@ function defaultMonitor(name) {
   }
 }
 
-// ---- profiles/*.conf (storage format; unchanged from the old Flutter app
-//      so existing profiles keep working) ----------------------------------
+// ---- profiles/*.conf (this plugin's own storage format) ------------------
 
 function parseProfileLine(line) {
   var trimmed = String(line || "").trim()

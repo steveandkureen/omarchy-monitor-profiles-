@@ -11,9 +11,8 @@ import "Model.js" as Model
 // for the pattern this follows.
 //
 // Payload: {"mode": "switcher"|"editor", "timeout": <seconds>}
-// Default mode is "editor" (equivalent to running the old app with no args);
-// the SUPER+SHIFT+P keybind summons with {"mode":"switcher"} (equivalent to
-// the old --next).
+// Default mode is "editor"; the Omarchy menu entry and any keybind you set
+// up would typically summon {"mode":"switcher"} instead.
 Item {
   id: root
 

@@ -4,14 +4,6 @@ An [Omarchy shell plugin](https://omarchyplugins.com/develop.html) for saving
 named Hyprland monitor layouts ("profiles") and switching between them —
 e.g. going from three monitors down to just the laptop panel and back.
 
-This is a native-plugin rewrite of an earlier standalone hypr_screen
-Flutter/GTK app. Moving it into the Omarchy shell process removes an entire
-class of problems the standalone app had: a `libflutter_linux_gtk.so` that
-could go missing after an Omarchy upgrade, a separate installed binary that
-could fall out of sync with the source, and manual `windowrule`/keybind
-plumbing to make its window float and center. Plugins run inside the same
-long-lived `omarchy-shell` (Quickshell) process, so none of that applies.
-
 ## Requirements
 
 - Omarchy quattro or later — specifically, a Lua-based Hyprland config
@@ -29,9 +21,8 @@ One panel, two modes:
 
 - **Switch** — a compact, keyboard-driven list of saved profiles. Up/Down
   (or j/k) to move the selection, Enter to apply it. An optional auto-advance
-  timer applies the current selection if left idle (default 10s, matching
-  the old `--next --timeout 10` behavior) — pass `{"timeout": 0}` to disable
-  it.
+  timer applies the current selection if left idle (default 10 seconds) —
+  pass `{"timeout": 0}` to disable it.
 - **Edit** — a drag-and-drop canvas: monitors are drawn to scale and
   positioned proportionally to their real layout. Drag a tile to reposition
   it, click one to edit its resolution/refresh/scale/rotation/enabled state,
@@ -115,7 +106,7 @@ needs one of these:
     "omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'")
   ```
   (Or bind a second key to `{"mode":"editor"}` — that's also the default
-  when no mode is given, matching the old app's plain/`--next` split.)
+  when no mode is given.)
 
 Omarchy has no manifest-level way for a plugin to declare or register a
 menu entry either, so it's suggested rather than automatic: the setup
@@ -136,9 +127,8 @@ it won't re-nag on every keypress before you get to it.
 ## Profile storage
 
 Profiles live in `~/.config/hypr/profiles/*.conf`, one `monitor = ...` line
-per monitor — unchanged from the original app, so existing profiles keep
-working with no migration step. This is just the plugin's own storage
-format; Hyprland never reads these files directly.
+per monitor. This is just the plugin's own storage format; Hyprland never
+reads these files directly.
 
 The first time the panel opens with no profiles saved anywhere yet, it
 saves your live layout as one called `current` — so the switcher isn't
@@ -159,10 +149,7 @@ pcall(require, "hypr.hypr_screen")
 ```
 
 (`pcall` so a fresh install — before any profile has been applied and the
-file exists — doesn't break config parsing. The generated file itself keeps
-the `hypr_screen.lua` name/require-path from the original app rather than
-being renamed to match the plugin — it's wired into `hyprland.lua` already
-on machines that had the old app, and renaming it buys nothing.)
+file doesn't exist yet — doesn't break config parsing.)
 
 ## Uninstall
 

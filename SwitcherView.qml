@@ -3,7 +3,7 @@ import qs.Commons
 
 // The quick switcher: arrow keys (or j/k) move the selection, Enter applies
 // it. An optional auto-advance timer applies the current selection if left
-// untouched, matching the old --next --timeout behavior.
+// untouched.
 Item {
   id: root
 
