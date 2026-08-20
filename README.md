@@ -49,7 +49,7 @@ calls (the format Hyprland's Lua config actually understands — see
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/<you>/omarchy-monitor-profiles.git --enable
+omarchy plugin add https://github.com/steveandkureen/omarchy-monitor-profiles-.git --enable
 ```
 
 Or for local development, symlink this checkout into place and let Omarchy
