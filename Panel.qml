@@ -31,6 +31,10 @@ Item {
   readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.monitor-profiles"
 
   property var switcherProfiles: []
+  // Bumped whenever profiles/*.conf changes for a reason EditorView's own
+  // Component.onCompleted listing wouldn't catch — right now, just seeding
+  // (below). EditorView refreshes its own list when this changes.
+  property int profilesRevision: 0
 
   // Whether hyprland.lua actually loads hypr_screen.lua — without that,
   // Apply/Save work fine (they're just file writes) but nothing ever
@@ -52,8 +56,67 @@ Item {
     root.switcherTimeout = payload.timeout !== undefined ? Number(payload.timeout) : 10
     if (root.mode === "switcher") refreshSwitcherProfiles()
     checkConfig()
+    ensureProfilesSeeded()
     root.opened = true
     Qt.callLater(root.focusActiveView)
+  }
+
+  // First run (no profiles saved anywhere yet, in either mode — a fresh
+  // install, or someone who deleted everything): seed one called "current"
+  // from the live layout, so the switcher isn't just an empty list and
+  // there's an immediate, known-good profile to fall back to. Checked on
+  // every open, but the profiles-exist guard below makes it a no-op past
+  // the first time.
+  function ensureProfilesSeeded() {
+    seedMkdirProc.running = false
+    seedMkdirProc.running = true
+  }
+
+  Process {
+    id: seedMkdirProc
+    command: ["mkdir", "-p", root.profilesDir]
+    onExited: seedCheckProc.running = true
+  }
+
+  Process {
+    id: seedCheckProc
+    command: ["bash", "-lc", "ls -1 \"" + root.profilesDir + "\" 2>/dev/null | grep -c '\\.conf$'"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var count = parseInt(String(text || "0").trim(), 10) || 0
+        if (count === 0) seedLiveProc.running = true
+      }
+    }
+  }
+
+  Process {
+    id: seedLiveProc
+    command: ["hyprctl", "monitors", "-j"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(text)
+          var monitors = parsed.map(Model.monitorFromHyprctlJson)
+          if (monitors.length > 0) {
+            seedFile.path = root.profilesDir + "/current.conf"
+            seedFile.setText(Model.profileToText(monitors))
+            root.refreshSwitcherProfiles()
+            root.profilesRevision += 1
+          }
+        } catch (e) {
+          // No monitors to read, or hyprctl unavailable — nothing to seed;
+          // the switcher/editor's own "no profiles" states cover this.
+        }
+      }
+    }
+  }
+
+  FileView {
+    id: seedFile
+    watchChanges: false
+    printErrors: false
   }
 
   function checkConfig() {
@@ -287,6 +350,7 @@ Item {
               EditorView {
                 anchors.fill: parent
                 visible: root.mode === "editor" && !root.showSetupBanner
+                profilesRevision: root.profilesRevision
               }
             }
           }

@@ -17,6 +17,10 @@ Item {
   property var profileNames: []
   property string profileName: ""
   property int selectedMonitorIndex: -1
+  // Set by Panel.qml, bumped when it seeds a first-run profile behind our
+  // back (both views can be the first one opened) — refresh to pick it up.
+  property int profilesRevision: 0
+  onProfilesRevisionChanged: refreshProfileList()
   readonly property var selectedMonitor: selectedMonitorIndex >= 0 && selectedMonitorIndex < monitors.length
     ? monitors[selectedMonitorIndex] : null
 
