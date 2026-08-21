@@ -152,12 +152,16 @@ Item {
     root.deleteProfile(root.profileName)
   }
 
-  function saveOrRename() {
+  function saveOrSaveAs() {
     if (root.profileName.trim() !== "") { root.saveProfile(); return }
-    root.startRename()
+    root.startSaveAs()
   }
 
-  function startRename() {
+  // Not a rename: this writes a new file under whatever name ends up in
+  // nameInput and leaves the original profile (if any) untouched. Starting
+  // the name pre-filled/selected just makes "tweak the name a little" as
+  // easy as an actual rename would be.
+  function startSaveAs() {
     root.editorMode = "naming"
     Qt.callLater(function() { nameInput.forceActiveFocus(); nameInput.selectAll() })
   }
@@ -277,7 +281,7 @@ Item {
     }
     else if (event.key === Qt.Key_E) { root.toggleEnabledSelected(); event.accepted = true }
     else if (event.key === Qt.Key_R) {
-      if (event.modifiers & Qt.ShiftModifier) root.startRename()
+      if (event.modifiers & Qt.ShiftModifier) root.startSaveAs()
       else root.rotateSelected()
       event.accepted = true
     }
@@ -285,7 +289,7 @@ Item {
     else if (event.key === Qt.Key_BracketLeft) { root.cycleProfile(-1); event.accepted = true }
     else if (event.key === Qt.Key_BracketRight) { root.cycleProfile(1); event.accepted = true }
     else if (event.key === Qt.Key_N) { root.loadLiveLayout(); event.accepted = true }
-    else if (event.key === Qt.Key_S) { root.saveOrRename(); event.accepted = true }
+    else if (event.key === Qt.Key_S) { root.saveOrSaveAs(); event.accepted = true }
     else if (event.key === Qt.Key_A) { root.applyNow(); event.accepted = true }
     // Escape is deliberately not handled here — unhandled, it bubbles up
     // to Panel.qml's keyCatcher, which dismisses the whole panel. That

@@ -68,7 +68,7 @@ Everything in the editor works without a mouse, in three vim-style modes
 | `i` | enter Move mode on the selected tile |
 | `e` | toggle enabled/disabled |
 | `r` | rotate 90° |
-| `Shift+R` | rename (enter Naming mode) |
+| `Shift+R` | save as a new name (enter Naming mode, current name pre-filled) |
 | `p` | make the selected tile primary |
 | `[` / `]` | previous/next saved profile |
 | `n` | load connected monitors (including ones currently disabled) |
