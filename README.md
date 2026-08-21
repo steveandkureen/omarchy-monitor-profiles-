@@ -4,6 +4,24 @@ An [Omarchy shell plugin](https://omarchyplugins.com/develop.html) for saving
 named Hyprland monitor layouts ("profiles") and switching between them —
 e.g. going from three monitors down to just the laptop panel and back.
 
+## Quick start
+
+```sh
+omarchy plugin add https://github.com/steveandkureen/omarchy-monitor-profiles-.git --enable
+```
+
+Open it via the Omarchy menu — search "monitors" (see "Getting to it
+without a mouse" below for a keybind too, if you want one).
+
+The first time it opens, if nothing has told Hyprland to actually load the
+layouts this plugin writes, you'll see a setup banner instead of the
+switcher/editor. Click **Add it for me** on "Apply monitor layouts" —
+that's the one step that lets the plugin actually control your monitors.
+The banner's other item (an Omarchy menu entry) is only about finding the
+plugin again later, not required for it to work. Do that once and you're
+done: search "monitors" any time after to switch profiles or open the
+editor.
+
 ## Requirements
 
 - Omarchy quattro or later — specifically, a Lua-based Hyprland config
@@ -53,7 +71,7 @@ Everything in the editor works without a mouse, in three vim-style modes
 | `Shift+R` | rename (enter Naming mode) |
 | `p` | make the selected tile primary |
 | `[` / `]` | previous/next saved profile |
-| `n` | load the live layout |
+| `n` | load connected monitors (including ones currently disabled) |
 | `s` | save (immediate if named, else enters Naming mode) |
 | `a` | apply now |
 | `dd` | delete the current profile |

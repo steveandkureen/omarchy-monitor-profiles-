@@ -314,7 +314,11 @@ Item {
 
   Process {
     id: liveProc
-    command: ["hyprctl", "monitors", "-j"]
+    // "all" (not just active outputs) so a connected-but-disabled monitor —
+    // e.g. one that dropped out, or one nothing has ever enabled — still
+    // shows up as a tile you can enable and position, not just ones
+    // currently on screen.
+    command: ["hyprctl", "monitors", "all", "-j"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -322,7 +326,7 @@ Item {
           var parsed = JSON.parse(text)
           root.replaceMonitors(parsed.map(Model.monitorFromHyprctlJson))
           root.profileName = ""
-          root.statusText = "Loaded current monitor layout."
+          root.statusText = "Loaded connected monitors (" + parsed.length + ")."
         } catch (e) {
           root.statusText = "Could not read hyprctl monitors: " + e
         }
