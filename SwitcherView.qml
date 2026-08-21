@@ -58,6 +58,7 @@ Item {
     spacing: Style.space(8)
 
     Text {
+      textFormat: Text.PlainText
       visible: root.profiles.length === 0
       text: "No profiles saved yet — create one in the Edit tab."
       color: Color.muted
@@ -85,6 +86,7 @@ Item {
         border.width: 1
 
         Text {
+          textFormat: Text.PlainText
           anchors.left: parent.left
           anchors.leftMargin: Style.space(12)
           anchors.verticalCenter: parent.verticalCenter

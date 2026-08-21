@@ -19,12 +19,14 @@ Column {
   Row {
     spacing: Style.space(6)
     Text {
+      textFormat: Text.PlainText
       text: root.done ? "✓" : "○"
       color: root.done ? Color.accent : Color.muted
       font.pixelSize: Style.font.bodySmall
       font.bold: root.done
     }
     Text {
+      textFormat: Text.PlainText
       text: root.done ? (root.title + " — " + root.doneText) : root.title
       color: root.done ? Color.muted : Color.foreground
       font.family: Style.font.family
@@ -40,6 +42,7 @@ Column {
     visible: !root.done
 
     Text {
+      textFormat: Text.PlainText
       width: parent.width - parent.leftPadding
       wrapMode: Text.Wrap
       color: Color.muted
@@ -57,6 +60,7 @@ Column {
       border.width: 1
 
       Text {
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: root.snippet
         font.family: Style.font.family
@@ -76,6 +80,7 @@ Column {
       border.width: 1
 
       Text {
+        textFormat: Text.PlainText
         id: addLabel
         anchors.centerIn: parent
         text: "Add it for me"

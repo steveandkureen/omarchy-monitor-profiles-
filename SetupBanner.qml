@@ -32,6 +32,7 @@ Item {
     spacing: Style.space(14)
 
     Text {
+      textFormat: Text.PlainText
       anchors.horizontalCenter: parent.horizontalCenter
       text: root.configReady ? "Suggested setup" : "Setup required"
       font.family: Style.font.family
@@ -61,6 +62,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       anchors.horizontalCenter: parent.horizontalCenter
       text: "Skip for now — browse and edit profiles without applying"
       color: Color.muted

@@ -12,6 +12,7 @@ Row {
   anchors.verticalCenter: parent ? parent.verticalCenter : undefined
 
   Text {
+    textFormat: Text.PlainText
     text: root.label
     color: Color.muted
     font.family: Style.font.family
