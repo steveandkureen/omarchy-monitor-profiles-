@@ -196,6 +196,7 @@ by hand:
 ```sh
 omarchy plugin validate .                                  # manifest schema
 qmllint -I "$OMARCHY_PATH/shell" *.qml                      # syntax
+node test/model-security.test.js                            # profile-name/Lua-injection safety
 omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{"mode":"editor"}'
 omarchy-shell shell hide dev.stephenschwarz.monitor-profiles
 ```
@@ -213,6 +214,7 @@ reload with `omarchy-restart-shell`.
 - `MonitorRect.qml`, `InspectorField.qml`, `ActionButton.qml`, `ModeTab.qml` — small shared components
 - `SetupBanner.qml` — first-run "hyprland.lua isn't wired up yet" prompt
 - `Model.js` — profile parsing/serialization, Lua translation, live-monitor mapping
+- `test/model-security.test.js` — adversarial tests for profile-name path traversal and Lua-injection escaping (`node test/model-security.test.js`)
 
 ## License
 
