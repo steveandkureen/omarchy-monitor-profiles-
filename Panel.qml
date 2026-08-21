@@ -195,6 +195,10 @@ Item {
   // dismiss — the switcher's Enter action. Kept independent of EditorView's
   // in-progress edit state.
   function applyProfileByName(name) {
+    // `name` always comes from root.switcherProfiles (a directory listing),
+    // never free-typed text, but this still gates it before it becomes a
+    // path -- same reasoning as EditorView's saveProfile/deleteProfile.
+    if (!Model.isValidProfileName(name)) return
     switcherApplyFile.path = root.profilesDir + "/" + name + ".conf"
     switcherApplyFile.reload()
     switcherApplyTarget = name

@@ -183,6 +183,11 @@ Item {
   }
 
   function loadProfile(name) {
+    // Every caller already sources `name` from root.profileNames (an actual
+    // directory listing), never free-typed text, but this is the one place
+    // a name becomes a filesystem path, so it gets the same gate as
+    // saveProfile/deleteProfile rather than trusting callers to stay that way.
+    if (!Model.isValidProfileName(name)) return
     root.profileName = name
     profileFile.path = root.profilesDir + "/" + name + ".conf"
     profileFile.reload()
@@ -212,6 +217,13 @@ Item {
   function saveProfile() {
     var name = root.profileName.trim()
     if (name === "") { root.statusText = "Name the profile before saving."; return }
+    // Gates the profile name before it becomes part of a filesystem path --
+    // it's free-typed text (Naming mode), so nothing about it can be
+    // trusted yet. See Model.isValidProfileName for the grammar.
+    if (!Model.isValidProfileName(name)) {
+      root.statusText = "Invalid profile name (no /, \\, leading \".\", or control characters)."
+      return
+    }
     if (root.monitors.length === 0) { root.statusText = "Nothing to save."; return }
     profileFile.path = root.profilesDir + "/" + name + ".conf"
     profileFile.setText(Model.profileToText(root.monitors))
@@ -221,6 +233,7 @@ Item {
   }
 
   function deleteProfile(name) {
+    if (!Model.isValidProfileName(name)) return
     deleteProc.command = ["rm", "-f", root.profilesDir + "/" + name + ".conf"]
     deleteProc.running = true
     if (root.profileName === name) root.profileName = ""
