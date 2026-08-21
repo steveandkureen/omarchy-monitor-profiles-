@@ -28,7 +28,7 @@ Item {
   readonly property string hyprScreenLuaPath: root.home + "/.config/hypr/hypr_screen.lua"
   readonly property string hyprlandLuaPath: root.home + "/.config/hypr/hyprland.lua"
   readonly property string omarchyMenuExtensionsPath: root.home + "/.config/omarchy/extensions/omarchy-menu.jsonc"
-  readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.stephenschwarz.monitor-profiles"
+  readonly property string pluginId: (root.manifest && root.manifest.id) || "dev.shantzware.monitor-profiles"
 
   property var switcherProfiles: []
   // Bumped whenever profiles/*.conf changes for a reason EditorView's own
