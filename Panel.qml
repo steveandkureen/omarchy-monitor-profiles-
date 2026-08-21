@@ -418,6 +418,7 @@ Item {
               spacing: Style.space(8)
 
               Text {
+                textFormat: Text.PlainText
                 text: "Monitor Profiles"
                 color: Color.foreground
                 font.family: Style.font.family

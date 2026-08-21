@@ -79,6 +79,7 @@ Rectangle {
   }
 
   Text {
+    textFormat: Text.PlainText
     anchors.centerIn: parent
     width: parent.width - Style.space(8)
     text: root.label
@@ -111,6 +112,7 @@ Rectangle {
     border.width: 1
 
     Text {
+      textFormat: Text.PlainText
       anchors.centerIn: parent
       text: "★"
       font.pixelSize: Style.font.caption

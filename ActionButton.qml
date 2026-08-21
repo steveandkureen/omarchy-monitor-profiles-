@@ -17,6 +17,7 @@ Rectangle {
   border.width: 1
 
   Text {
+    textFormat: Text.PlainText
     anchors.centerIn: parent
     text: root.text
     color: Color.foreground

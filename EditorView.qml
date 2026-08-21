@@ -394,6 +394,7 @@ Item {
         spacing: Style.space(6)
 
         Text {
+          textFormat: Text.PlainText
           text: "Profiles"
           color: Color.muted
           font.family: Style.font.family
@@ -415,6 +416,7 @@ Item {
               : "transparent"
 
             Text {
+              textFormat: Text.PlainText
               anchors.left: parent.left
               anchors.leftMargin: Style.space(8)
               anchors.right: deleteBtn.left
@@ -427,6 +429,7 @@ Item {
             }
 
             Text {
+              textFormat: Text.PlainText
               id: deleteBtn
               anchors.right: parent.right
               anchors.rightMargin: Style.space(6)
@@ -453,6 +456,7 @@ Item {
           radius: Style.cornerRadius
           color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
           Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: "Load current layout"
             color: Color.foreground
@@ -595,6 +599,7 @@ Item {
         height: Style.space(20)
 
         Text {
+          textFormat: Text.PlainText
           anchors.left: parent.left
           anchors.leftMargin: Style.space(10)
           anchors.verticalCenter: parent.verticalCenter
@@ -629,6 +634,7 @@ Item {
         topPadding: Style.space(8)
 
         Text {
+          textFormat: Text.PlainText
           text: root.selectedMonitor ? root.selectedMonitor.name : ""
           color: Color.foreground
           font.family: Style.font.family
@@ -659,6 +665,7 @@ Item {
         }
 
         Text {
+          textFormat: Text.PlainText
           text: "Rotate"
           color: Color.muted
           font.family: Style.font.family
@@ -670,7 +677,7 @@ Item {
           radius: Style.cornerRadius
           color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
           anchors.verticalCenter: parent.verticalCenter
-          Text { anchors.centerIn: parent; text: root.selectedMonitor ? (root.selectedMonitor.transform * 90) + "°" : ""; color: Color.foreground; font.pixelSize: Style.font.caption }
+          Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: root.selectedMonitor ? (root.selectedMonitor.transform * 90) + "°" : ""; color: Color.foreground; font.pixelSize: Style.font.caption }
           MouseArea {
             anchors.fill: parent
             onClicked: root.updateSelected({ transform: ((root.selectedMonitor.transform + 1) % 4) })
@@ -685,6 +692,7 @@ Item {
             ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
             : Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25)
           Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: root.selectedMonitor && root.selectedMonitor.enabled ? "Enabled" : "Disabled"
             color: Color.foreground
@@ -733,6 +741,7 @@ Item {
             Keys.onEnterPressed: root.finishNaming(true)
             Keys.onEscapePressed: root.finishNaming(false)
             Text {
+              textFormat: Text.PlainText
               visible: parent.text === ""
               text: "profile name…"
               color: Color.muted
@@ -745,6 +754,7 @@ Item {
         ActionButton { text: "Apply"; onClicked: root.applyNow() }
 
         Text {
+          textFormat: Text.PlainText
           text: root.statusText
           color: Color.muted
           font.family: Style.font.family
