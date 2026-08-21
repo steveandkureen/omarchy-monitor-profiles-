@@ -11,7 +11,7 @@ e.g. going from three monitors down to just the laptop panel and back.
 ## Quick start
 
 ```sh
-omarchy plugin add https://github.com/steveandkureen/omarchy-monitor-profiles-.git --enable
+omarchy plugin add https://github.com/steveandkureen/omarchy-monitor-profiles.git --enable
 ```
 
 Open it via the Omarchy menu — search "monitors" (see "Getting to it
@@ -92,16 +92,16 @@ with the mouse); hold Shift for a finer step. `Esc` returns to Normal.
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/steveandkureen/omarchy-monitor-profiles-.git --enable
+omarchy plugin add https://github.com/steveandkureen/omarchy-monitor-profiles.git --enable
 ```
 
 Or for local development, symlink this checkout into place and let Omarchy
 discover it:
 
 ```sh
-ln -s "$(pwd)" ~/.config/omarchy/plugins/dev.stephenschwarz.monitor-profiles
+ln -s "$(pwd)" ~/.config/omarchy/plugins/dev.shantzware.monitor-profiles
 omarchy-shell shell rescanPlugins
-omarchy plugin enable dev.stephenschwarz.monitor-profiles
+omarchy plugin enable dev.shantzware.monitor-profiles
 ```
 
 ## Getting to it without a mouse
@@ -116,7 +116,7 @@ needs one of these:
   monitor-profiles` directly. Registered as a row in
   `~/.config/omarchy/extensions/omarchy-menu.jsonc`:
   ```jsonc
-  "trigger.monitor-profiles": {"icon":"󰍹","label":"Monitor Profiles","aliases":["monitor-profiles","monitors"],"description":"Switch to a saved monitor layout","action":"omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'"}
+  "trigger.monitor-profiles": {"icon":"󰍹","label":"Monitor Profiles","aliases":["monitor-profiles","monitors"],"description":"Switch to a saved monitor layout","action":"omarchy-shell shell summon dev.shantzware.monitor-profiles '{\"mode\":\"switcher\"}'"}
   ```
 - **A direct keybind**, if you'd rather have one — faster once you've
   picked a key, but not suggested by the plugin itself: picking one risks
@@ -125,7 +125,7 @@ needs one of these:
   ```lua
   hl.unbind("SUPER + SHIFT + P")
   o.bind("SUPER + SHIFT + P", "Monitor Profiles switcher",
-    "omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{\"mode\":\"switcher\"}'")
+    "omarchy-shell shell summon dev.shantzware.monitor-profiles '{\"mode\":\"switcher\"}'")
   ```
   (Or bind a second key to `{"mode":"editor"}` — that's also the default
   when no mode is given.)
@@ -176,7 +176,7 @@ file doesn't exist yet — doesn't break config parsing.)
 ## Uninstall
 
 ```sh
-omarchy plugin remove dev.stephenschwarz.monitor-profiles
+omarchy plugin remove dev.shantzware.monitor-profiles
 ```
 
 This unloads the plugin and removes it from `~/.config/omarchy/plugins/`
@@ -197,8 +197,8 @@ by hand:
 omarchy plugin validate .                                  # manifest schema
 qmllint -I "$OMARCHY_PATH/shell" *.qml                      # syntax
 node test/model-security.test.js                            # profile-name/Lua-injection safety
-omarchy-shell shell summon dev.stephenschwarz.monitor-profiles '{"mode":"editor"}'
-omarchy-shell shell hide dev.stephenschwarz.monitor-profiles
+omarchy-shell shell summon dev.shantzware.monitor-profiles '{"mode":"editor"}'
+omarchy-shell shell hide dev.shantzware.monitor-profiles
 ```
 
 Editing a file under `~/.config/omarchy/plugins/<id>/` usually hot-reloads;
