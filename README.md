@@ -4,6 +4,10 @@ An [Omarchy shell plugin](https://omarchyplugins.com/develop.html) for saving
 named Hyprland monitor layouts ("profiles") and switching between them —
 e.g. going from three monitors down to just the laptop panel and back.
 
+| Switch | Edit |
+|---|---|
+| ![The switcher: a list of saved profiles — MacDev, Normal (selected), Single](screenshots/switcher.png) | ![The editor: three saved profiles in the sidebar, a live 3-monitor layout on the canvas, keyboard hints along the bottom](screenshots/editor.png) |
+
 ## Quick start
 
 ```sh
