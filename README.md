@@ -215,6 +215,7 @@ reload with `omarchy-restart-shell`.
 - `SetupBanner.qml` — first-run "hyprland.lua isn't wired up yet" prompt
 - `Model.js` — profile parsing/serialization, Lua translation, live-monitor mapping
 - `test/model-security.test.js` — adversarial tests for profile-name path traversal and Lua-injection escaping (`node test/model-security.test.js`)
+- `preview.png` — marketplace listing thumbnail (must live at repo root, not `screenshots/`, for the catalog build to pick it up); same image as the editor screenshot above
 
 ## License
 
